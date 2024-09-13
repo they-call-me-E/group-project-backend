@@ -15,14 +15,18 @@ const {
   leaveMembers,
   updateGroup,
 } = require("./../controllers/groupController");
-const {
-  sendInviteMessage,
-  deleteInviteMessage,
-} = require("./../controllers/inviteGroupController");
+// const {
+//   sendInviteMessage,
+//   deleteInviteMessage,
+// } = require("./../controllers/inviteGroupController");
 const {
   getGroupFences,
   getSingleGroupFences,
 } = require("./../controllers/fencesController");
+const {
+  generateInviteCode,
+  joinGroupWithInvite,
+} = require("./../controllers/inviteGroupController");
 
 // Mounting multiple router
 const router = express.Router();
@@ -43,7 +47,9 @@ router.patch("/:id", updateGroup);
 router.patch("/leave/:id", leaveMembers);
 router.get("/:id/fences", getGroupFences);
 router.get("/:groupId/fences/:fenceId", getSingleGroupFences);
-router.patch("/:groupId/invite/members", sendInviteMessage);
-router.patch("/:groupId/delete/invite/members", deleteInviteMessage);
+// router.patch("/:groupId/invite/members", sendInviteMessage);
+// router.patch("/:groupId/delete/invite/members", deleteInviteMessage);
+router.post("/:groupId/invite/generate", generateInviteCode);
+router.post("/invite/join", joinGroupWithInvite);
 
 module.exports = router;

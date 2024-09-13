@@ -64,6 +64,7 @@ module.exports.updateUser = catchasync(async (req, res, next) => {
   const filteredBody = filterObj(
     req.body,
     "name",
+    "email",
     "phone",
     "relation",
     "location",
@@ -71,8 +72,18 @@ module.exports.updateUser = catchasync(async (req, res, next) => {
   );
   if (req.file) filteredBody.avatar = req.file.filename;
 
+  //let new_req_body = JSON.parse(filteredBody);
+
+  const convertedData = {
+    ...filteredBody,
+    location: {
+      ...JSON.parse(filteredBody.location),
+    },
+    status: JSON.parse(filteredBody.status),
+  };
+
   //3)Update user document
-  const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
+  const updatedUser = await User.findByIdAndUpdate(req.user.id, convertedData, {
     new: true,
     runValidators: true,
   });

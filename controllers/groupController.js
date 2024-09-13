@@ -275,13 +275,40 @@ module.exports.getAllMembers = catchasync(async function (req, res, next) {
     return next(new AppError("Access Denied", 403));
   }
 
+  // updated code start
+  // const document = {
+  //   members: data.members.map((member) => {
+  //         data.groupAdmin.map((admin) =>{
+  //              if(member._id === admin_id){
+
+  //              }
+  //         })
+  //     return userResponse(item);
+  //   }),
+  // };
+  // updated code end
+
   const document = {
     members: data.members.map((item) => {
       return userResponse(item);
     }),
+
+    admins: data.groupAdmin.map((item) => {
+      return userResponse(item);
+    }),
   };
+
+  document.members.forEach((member) => {
+    const isAdmin = document.admins.some(
+      (admin) => admin.uuid.toString() === member.uuid.toString()
+    );
+    member.is_admin = isAdmin;
+  });
+
   res.status(200).json({
-    document,
+    document: {
+      members: document.members,
+    },
   });
 });
 

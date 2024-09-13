@@ -29,19 +29,25 @@ const groupSchema = new mongoose.Schema(
       },
     ],
     inviteMembersList: [
-      {
-        type: mongoose.Schema.ObjectId,
-        ref: "Group",
-        required: true,
-      },
+      // {
+      //   invite_code: {
+      //     type: String,
+      //     required: [true, "Please tell us an invite code!"],
+      //   },
+      //   user_id: {
+      //     type: mongoose.Schema.ObjectId,
+      //     ref: "User",
+      //     required: true,
+      //   },
+      //   group_id: {
+      //     type: mongoose.Schema.ObjectId,
+      //     ref: "Group",
+      //     required: true,
+      //   },
+      //   expires_in: Date,
+      //   created_at: Date.now,
+      // },
     ],
-    // fences: [
-    //   {
-    //     type: mongoose.Schema.ObjectId,
-    //     ref: "Fences",
-    //     unique: true,
-    //   },
-    // ],
   },
   { timestamps: true }
 );
@@ -55,10 +61,7 @@ groupSchema.pre(/^find/, function (next) {
     path: "groupAdmin",
     select: "-__v -password",
   });
-  // this.populate({
-  //   path: "fences",
-  //   select: "-__v",
-  // });
+
   this.populate({
     path: "ownerID",
     select: "-__v -password",

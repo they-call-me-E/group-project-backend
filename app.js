@@ -6,8 +6,7 @@ const AppError = require("./utils/apperror");
 const userRouter = require("./routes/userroutes");
 const groupRouter = require("./routes/grouproutes");
 const fencesRouter = require("./routes/fencesroutes");
-const locationRouter = require("./routes/locationroutes");
-const statusRouter = require("./routes/statusroutes");
+const locationWithstatusRouter = require("./routes/locationWithstatusroutes");
 
 const app = express();
 
@@ -21,8 +20,8 @@ app.use(cors());
 app.use("/api/users", userRouter);
 app.use("/api/groups", groupRouter);
 app.use("/api/group", fencesRouter);
-app.use("/api/location", locationRouter);
-app.use("/api/status", statusRouter);
+app.use("/api/location_with_status", locationWithstatusRouter);
+
 app.all("*", (req, res, next) => {
   return next(
     new AppError(`can not findout this url: ${req.originalUrl}`, 404)

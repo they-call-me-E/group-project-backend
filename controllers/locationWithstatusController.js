@@ -2,7 +2,7 @@ const catchasync = require("./../utils/catchasync");
 const { User } = require("../models/user");
 const AppError = require("./../utils/apperror");
 
-module.exports.updateStatus = catchasync(async (req, res, next) => {
+module.exports.updateLocationWithStatus = catchasync(async (req, res, next) => {
   // check existing user
   const existing_user = await User.findById(req.params.id);
 
@@ -13,6 +13,8 @@ module.exports.updateStatus = catchasync(async (req, res, next) => {
   if (req.params.id !== JSON.stringify(req.user._id).replace(/"/g, "")) {
     return next(new AppError("You do not have permission this action", 403));
   }
+
+  // status updated code start
 
   const statusBody = { status: { device: {} } };
   if (req?.body?.status?.location_sharing) {
@@ -41,16 +43,35 @@ module.exports.updateStatus = catchasync(async (req, res, next) => {
   if (req?.body?.status?.device?.charging) {
     statusBody.status.device.charging = req?.body?.status?.device?.charging;
   }
+  // status updated code end
+  // location updated code start
+
+  // location updated code end
+  const locationBody = { location: {} };
+  if (req?.body?.location?.latitude) {
+    locationBody.location.latitude = req.body.location.latitude;
+  }
+  if (req?.body?.location?.longitude) {
+    locationBody.location.longitude = req.body.location.longitude;
+  }
+  if (req?.body?.location?.address) {
+    locationBody.location.address = req.body.location.address;
+  }
 
   //3)Update user document
-  const updatedStatus = await User.findByIdAndUpdate(req.user.id, statusBody, {
-    new: true,
-    runValidators: true,
-  });
+  const updatedLocationWithStatus = await User.findByIdAndUpdate(
+    req.user.id,
+    { ...locationBody, ...statusBody },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
   res.status(200).json({
     //user: userResponse(updatedUser),
-    location: {
-      ...updatedStatus.status,
+    locationWithStatus: {
+      status: updatedLocationWithStatus.status,
+      location: updatedLocationWithStatus.location,
     },
   });
 });
