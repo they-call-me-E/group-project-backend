@@ -69,11 +69,12 @@ module.exports.generateInviteCode = catchasync(async (req, res, next) => {
 });
 
 module.exports.joinGroupWithInvite = catchasync(async (req, res, next) => {
-  const { invite_code, groupId } = req.body;
+  const { invite_code } = req.body;
   const user = await Invite.findOne({
     user_id: req.user._id,
-    group_id: groupId,
+    invite_code: invite_code,
   });
+
   if (!user) {
     return next(
       new AppError(
@@ -86,7 +87,7 @@ module.exports.joinGroupWithInvite = catchasync(async (req, res, next) => {
     if (new Date() > user.expires_in) {
       // Code expired, remove it from the database
       await Invite.deleteOne({
-        group_id: groupId,
+        group_id: user.group_id,
         user_id: req.user._id,
       });
       return next(new AppError("Invite code expired", 400));
@@ -103,7 +104,7 @@ module.exports.joinGroupWithInvite = catchasync(async (req, res, next) => {
 
   // update group member
 
-  const existing_group = await Group.findById(groupId);
+  const existing_group = await Group.findById(user.group_id);
   if (!existing_group) {
     return next(
       new AppError("Oops! We couldn’t find any details for the group", 404)
@@ -113,6 +114,10 @@ module.exports.joinGroupWithInvite = catchasync(async (req, res, next) => {
     return JSON.stringify(item._id).replace(/"/g, "") == req.user._id;
   });
   if (find_user) {
+    await Invite.deleteOne({
+      group_id: user.group_id,
+      user_id: req.user._id,
+    });
     return next(
       new AppError("User already exists in the list of members", 409)
     );
@@ -129,13 +134,13 @@ module.exports.joinGroupWithInvite = catchasync(async (req, res, next) => {
     members: arr,
   };
 
-  const data = await Group.findByIdAndUpdate(groupId, body, {
+  const data = await Group.findByIdAndUpdate(user.group_id, body, {
     new: true,
     runValidators: true,
   });
-  // Code expired, remove it from the database
+
   await Invite.deleteOne({
-    group_id: groupId,
+    group_id: user.group_id,
     user_id: req.user._id,
   });
 
