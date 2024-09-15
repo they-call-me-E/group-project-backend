@@ -6,11 +6,11 @@ const inviteSchema = new mongoose.Schema(
       type: String,
       required: [true, "Please tell us an invite code!"],
     },
-    user_id: {
-      type: mongoose.Schema.ObjectId,
-      ref: "User",
-      required: true,
-    },
+    // user_id: {
+    //   type: mongoose.Schema.ObjectId,
+    //   ref: "User",
+    //   required: true,
+    // },
     group_id: {
       type: mongoose.Schema.ObjectId,
       ref: "Group",
