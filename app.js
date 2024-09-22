@@ -7,6 +7,7 @@ const userRouter = require("./routes/userroutes");
 const groupRouter = require("./routes/grouproutes");
 const fencesRouter = require("./routes/fencesroutes");
 const locationWithstatusRouter = require("./routes/locationWithstatusroutes");
+const pingRouter = require("./routes/pingRoutes");
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use("/api/users", userRouter);
 app.use("/api/groups", groupRouter);
 app.use("/api/group", fencesRouter);
 app.use("/api/location_with_status", locationWithstatusRouter);
+app.use("/api/ping", pingRouter);
 
 app.all("*", (req, res, next) => {
   return next(
