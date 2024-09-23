@@ -1,7 +1,12 @@
 const mongoose = require("mongoose");
+const { v4: uuidv4 } = require("uuid");
 
 const fencesSchema = new mongoose.Schema(
   {
+    _id: {
+      type: String,
+      default: uuidv4,
+    },
     name: {
       type: String,
       required: [true, "Please tell us a fences name!"],
@@ -19,7 +24,7 @@ const fencesSchema = new mongoose.Schema(
     },
     groups: [
       {
-        type: mongoose.Schema.ObjectId,
+        type: String,
         ref: "Group",
         required: true,
       },

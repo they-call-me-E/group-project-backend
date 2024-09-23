@@ -1,7 +1,12 @@
 const mongoose = require("mongoose");
+const { v4: uuidv4 } = require("uuid");
 
 const inviteSchema = new mongoose.Schema(
   {
+    _id: {
+      type: String,
+      default: uuidv4,
+    },
     invite_code: {
       type: String,
       required: [true, "Please tell us an invite code!"],
@@ -12,7 +17,7 @@ const inviteSchema = new mongoose.Schema(
     //   required: true,
     // },
     group_id: {
-      type: mongoose.Schema.ObjectId,
+      type: String,
       ref: "Group",
       required: true,
     },

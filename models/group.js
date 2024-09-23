@@ -1,7 +1,12 @@
 const mongoose = require("mongoose");
+const { v4: uuidv4 } = require("uuid");
 
 const groupSchema = new mongoose.Schema(
   {
+    _id: {
+      type: String,
+      default: uuidv4,
+    },
     name: {
       type: String,
       required: [true, "Please tell us a group name!"],
@@ -9,13 +14,13 @@ const groupSchema = new mongoose.Schema(
       maxlength: 50,
     },
     ownerID: {
-      type: mongoose.Schema.ObjectId,
+      type: String,
       ref: "User",
       required: true,
     },
     groupAdmin: [
       {
-        type: mongoose.Schema.ObjectId,
+        type: String,
         ref: "User",
         required: true,
       },
@@ -23,7 +28,7 @@ const groupSchema = new mongoose.Schema(
 
     members: [
       {
-        type: mongoose.Schema.ObjectId,
+        type: String,
         ref: "User",
         required: true,
       },

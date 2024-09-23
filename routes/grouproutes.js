@@ -14,6 +14,7 @@ const {
   removeMembers,
   leaveMembers,
   updateGroup,
+  getAllAdmins,
 } = require("./../controllers/groupController");
 // const {
 //   sendInviteMessage,
@@ -35,6 +36,7 @@ const router = express.Router();
 router.use(protect);
 router.get("/:groupId/members/:userId", getAllGroupDataWithMembers);
 router.get("/:id/members", getAllMembers);
+router.get("/:id/admins", getAllAdmins);
 router.get("/", getAllgroups);
 router.get("/:id", getSingleGroup);
 router.post("/create", createGroup);
@@ -47,8 +49,6 @@ router.patch("/:id", updateGroup);
 router.patch("/leave/:id", leaveMembers);
 router.get("/:id/fences", getGroupFences);
 router.get("/:groupId/fences/:fenceId", getSingleGroupFences);
-// router.patch("/:groupId/invite/members", sendInviteMessage);
-// router.patch("/:groupId/delete/invite/members", deleteInviteMessage);
 router.post("/:groupId/invite/generate", generateInviteCode);
 router.post("/invite/join", joinGroupWithInvite);
 

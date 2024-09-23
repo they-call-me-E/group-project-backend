@@ -52,7 +52,7 @@ module.exports.updateUser = catchasync(async (req, res, next) => {
     return next(new AppError("No user found with that Id", 404));
   }
 
-  if (req.params.id !== JSON.stringify(req.user._id).replace(/"/g, "")) {
+  if (req.params.id !== req.user._id) {
     return next(new AppError("You do not have permission this action", 403));
   }
 
@@ -70,17 +70,24 @@ module.exports.updateUser = catchasync(async (req, res, next) => {
     "location",
     "status"
   );
+
   if (req.file) filteredBody.avatar = req.file.filename;
 
   //let new_req_body = JSON.parse(filteredBody);
 
   const convertedData = {
     ...filteredBody,
-    location: {
-      ...JSON.parse(filteredBody.location),
-    },
-    status: JSON.parse(filteredBody.status),
   };
+
+  if (filteredBody?.location) {
+    convertedData["location"] = {
+      ...filteredBody.location,
+    };
+  }
+
+  if (filteredBody?.status) {
+    convertedData["status"] = filteredBody.status;
+  }
 
   //3)Update user document
   const updatedUser = await User.findByIdAndUpdate(req.user.id, convertedData, {

@@ -177,16 +177,19 @@ module.exports.addMembers = catchasync(async function (req, res, next) {
     }
 
     const find_admin = existing_group.groupAdmin.find((item) => {
-      return JSON.stringify(item._id).replace(/"/g, "") == req.body.userId;
-    });
-    if (find_admin) {
-      return next(
-        new AppError(
-          "User already admin for this group. No action needed.",
-          409
-        )
+      return (
+        JSON.stringify(item._id).replace(/"/g, "") ==
+        JSON.stringify(req.user._id).replace(/"/g, "")
       );
-    }
+    });
+    // if (find_admin) {
+    //   return next(
+    //     new AppError(
+    //       "User already admin for this group. No action needed.",
+    //       409
+    //     )
+    //   );
+    // }
 
     const arr = existing_group.members.map((item) => {
       let stringWithoutQuotes = JSON.stringify(item._id).replace(/"/g, "");
@@ -201,7 +204,7 @@ module.exports.addMembers = catchasync(async function (req, res, next) {
 
     if (
       JSON.stringify(req.user._id).replace(/"/g, "") !==
-      JSON.stringify(existing_group.ownerID._id).replace(/"/g, "")
+      JSON.stringify(find_admin._id).replace(/"/g, "")
     ) {
       return next(new AppError("You do not have permission this action", 403));
     }
@@ -455,22 +458,22 @@ module.exports.removeAdmin = catchasync(async function (req, res, next) {
 
     // delete as a member
 
-    const arrMembers = existing_group.members.filter((item) => {
-      if (JSON.stringify(item._id).replace(/"/g, "") !== req.body.adminId) {
-        let stringWithoutQuotes = JSON.stringify(item._id).replace(/"/g, "");
-        return stringWithoutQuotes;
-      }
-    });
+    // const arrMembers = existing_group.members.filter((item) => {
+    //   if (JSON.stringify(item._id).replace(/"/g, "") !== req.body.adminId) {
+    //     let stringWithoutQuotes = JSON.stringify(item._id).replace(/"/g, "");
+    //     return stringWithoutQuotes;
+    //   }
+    // });
 
-    const newArrMembers = arrMembers.map((item) => {
-      let stringWithoutQuotes = JSON.stringify(item._id).replace(/"/g, "");
+    // const newArrMembers = arrMembers.map((item) => {
+    //   let stringWithoutQuotes = JSON.stringify(item._id).replace(/"/g, "");
 
-      return stringWithoutQuotes;
-    });
+    //   return stringWithoutQuotes;
+    // });
 
     const body = {
       groupAdmin: newArr,
-      members: newArrMembers,
+      // members: newArrMembers,
     };
     const data = await Group.findByIdAndUpdate(req.params.id, body, {
       new: true,
@@ -526,21 +529,37 @@ module.exports.removeMembers = catchasync(async function (req, res, next) {
   });
 
   if (admin_user) {
-    const arr = existing_group.members.filter((item) => {
+    // delete as a member
+    const memberArr = existing_group.members.filter((item) => {
       if (JSON.stringify(item._id).replace(/"/g, "") !== req.body.userId) {
         let stringWithoutQuotes = JSON.stringify(item._id).replace(/"/g, "");
         return stringWithoutQuotes;
       }
     });
 
-    const newArr = arr.map((item) => {
+    // delete as a admin
+    const adminArr = existing_group.groupAdmin.filter((item) => {
+      if (JSON.stringify(item._id).replace(/"/g, "") !== req.body.userId) {
+        let stringWithoutQuotes = JSON.stringify(item._id).replace(/"/g, "");
+        return stringWithoutQuotes;
+      }
+    });
+
+    const newMemberArr = memberArr.map((item) => {
+      let stringWithoutQuotes = JSON.stringify(item._id).replace(/"/g, "");
+
+      return stringWithoutQuotes;
+    });
+
+    const newAdminArr = adminArr.map((item) => {
       let stringWithoutQuotes = JSON.stringify(item._id).replace(/"/g, "");
 
       return stringWithoutQuotes;
     });
 
     const body = {
-      members: newArr,
+      members: newMemberArr,
+      groupAdmin: newAdminArr,
     };
     const data = await Group.findByIdAndUpdate(req.params.id, body, {
       new: true,
@@ -751,4 +770,40 @@ module.exports.updateGroup = catchasync(async (req, res, next) => {
   } else {
     return next(new AppError("You do not have permission this action", 403));
   }
+});
+
+// Array of all adminList associated with group id
+
+module.exports.getAllAdmins = catchasync(async function (req, res, next) {
+  const data = await Group.findById(req.params.id);
+
+  if (!data) {
+    return next(new AppError("No Document found with that GroupId", 404));
+  }
+  const checkUser = data.groupAdmin.find((item) => {
+    return req.user._id == JSON.stringify(item._id).replace(/"/g, "");
+  });
+
+  if (!checkUser) {
+    return next(new AppError("Access Denied", 403));
+  }
+
+  const document = {
+    adminList: data.groupAdmin.map((item) => {
+      return userResponse(item);
+    }),
+  };
+
+  document.adminList.forEach((member) => {
+    const isAdmin = document.adminList.some(
+      (admin) => admin.uuid.toString() === member.uuid.toString()
+    );
+    member.is_admin = isAdmin;
+  });
+
+  res.status(200).json({
+    document: {
+      adminList: document.adminList,
+    },
+  });
 });
