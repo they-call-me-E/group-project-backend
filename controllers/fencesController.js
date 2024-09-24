@@ -59,7 +59,7 @@ module.exports.getGroupFences = catchasync(async function (req, res, next) {
     return next(new AppError("No group found with that GroupId", 404));
   }
   const allFencesData = await Fences.find({});
-  if (allFencesData.length === 0) {
+  if (allFencesData?.length === 0) {
     return next(
       new AppError(
         "The requested data is not available because the database table is empty.",
@@ -68,8 +68,8 @@ module.exports.getGroupFences = catchasync(async function (req, res, next) {
     );
   }
 
-  for (let i = 0; i < allFencesData.length; i++) {
-    for (let j = 0; j < allFencesData[i].groups.length; j++) {
+  for (let i = 0; i < allFencesData?.length; i++) {
+    for (let j = 0; j < allFencesData[i]?.groups?.length; j++) {
       if (
         JSON.stringify(allFencesData[i].groups[j]._id).replace(/"/g, "") ==
         JSON.stringify(req.params.id).replace(/"/g, "")
@@ -81,7 +81,7 @@ module.exports.getGroupFences = catchasync(async function (req, res, next) {
     }
   }
 
-  if (isEmptyObjectCheck(filterFencesData) && groupMembersArr.length === 0) {
+  if (isEmptyObjectCheck(filterFencesData) && groupMembersArr?.length === 0) {
     return next(
       new AppError("No document associated with the provided Group Id", 404)
     );
@@ -127,7 +127,7 @@ module.exports.getSingleGroupFences = catchasync(async function (
   let groupMembersArr = [];
   const allFencesData = await Fences.find({});
 
-  if (allFencesData.length === 0) {
+  if (allFencesData?.length === 0) {
     return next(
       new AppError(
         "The requested data is not available because the database table is empty.",
@@ -145,8 +145,8 @@ module.exports.getSingleGroupFences = catchasync(async function (
     return next(new AppError("No fence found with that FenceId", 404));
   }
 
-  for (let i = 0; i < allFencesData.length; i++) {
-    for (let j = 0; j < allFencesData[i].groups.length; j++) {
+  for (let i = 0; i < allFencesData?.length; i++) {
+    for (let j = 0; j < allFencesData[i]?.groups?.length; j++) {
       if (
         JSON.stringify(allFencesData[i].groups[j]._id).replace(/"/g, "") ==
           JSON.stringify(req.params.groupId).replace(/"/g, "") &&
@@ -159,7 +159,7 @@ module.exports.getSingleGroupFences = catchasync(async function (
     }
   }
 
-  if (isEmptyObjectCheck(filterFencesData) && groupMembersArr.length === 0) {
+  if (isEmptyObjectCheck(filterFencesData) && groupMembersArr?.length === 0) {
     return next(
       new AppError(
         "No document associated with the provided Group Id and Fence Id",

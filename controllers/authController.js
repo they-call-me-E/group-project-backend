@@ -63,6 +63,7 @@ module.exports.protect = catchAsync(async (req, res, next) => {
   ) {
     token = req.headers.authorization.split(" ")[1];
   }
+
   if (!token) {
     return next(
       new AppError("you are not looged in! please login to get access.", 401)
