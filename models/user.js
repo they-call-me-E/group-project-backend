@@ -51,7 +51,7 @@ const userSchema = new mongoose.Schema(
         validator: function (el) {
           return el === this.password;
         },
-        message: "Password are not the same",
+        message: "Passwords are not the same",
       },
     },
     location: {
@@ -61,7 +61,6 @@ const userSchema = new mongoose.Schema(
       longitude: {
         type: Number,
       },
-
       address: {
         type: String,
       },
@@ -94,6 +93,27 @@ const userSchema = new mongoose.Schema(
         },
       },
     },
+    // Geodata for geofence tracking
+    geodata: [
+      {
+        currentGeofenceId: {
+          type: String,
+          required: true, // Geofence ID is required
+        },
+        groupId: {
+          type: String,
+          required: true, // Group ID is required
+        },
+        geofenceName: {
+          type: String,
+          required: [true, "geofenceName is required"], // Geofence name is mandatory
+        },
+        enteredAt: {
+          type: Date,
+          default: null, // Set when the user enters a geofence
+        },
+      },
+    ],
   },
   { timestamps: true }
 );

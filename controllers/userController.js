@@ -145,3 +145,81 @@ module.exports.getUser = catchasync(async function (req, res, next) {
     user: userResponse(user),
   });
 });
+
+// Add Geofence Entry
+module.exports.addGeofence = catchasync(async (req, res, next) => {
+  const { currentGeofenceId, groupId, geofenceName } = req.body;
+
+  // Validate the geofenceName is provided
+  if (!geofenceName) {
+    return next(new AppError("geofenceName is required.", 400));
+  }
+
+  // Find the user
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return next(new AppError("No user found with that Id", 404));
+  }
+
+  // Remove any duplicate entries (oldest entry) based on currentGeofenceId and groupId
+  user.geodata = user.geodata.filter(
+    (entry) =>
+      !(
+        entry.currentGeofenceId === currentGeofenceId &&
+        entry.groupId === groupId
+      )
+  );
+
+  // Add the new geofence entry
+  const newGeofenceEntry = {
+    currentGeofenceId,
+    groupId,
+    geofenceName,
+    enteredAt: new Date(), // Set the current timestamp
+  };
+
+  user.geodata.push(newGeofenceEntry);
+  await user.save();
+
+  res.status(201).json({
+    message: "geodata successfully added",
+    newGeodata: newGeofenceEntry,
+  });
+});
+
+// Remove Geofence Entry
+module.exports.removeGeofence = catchasync(async (req, res, next) => {
+  const { currentGeofenceId, groupId } = req.body;
+
+  // Find the user
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return next(new AppError("No user found with that Id", 404));
+  }
+
+  // Filter out the geofence entry to remove
+  const filteredGeodata = user.geodata.filter(
+    (entry) =>
+      !(
+        entry.currentGeofenceId === currentGeofenceId &&
+        entry.groupId === groupId
+      )
+  );
+
+  // If no changes, return success message
+  if (user.geodata.length === filteredGeodata.length) {
+    return res.status(200).json({
+      message: "geofence successfully removed",
+    });
+  }
+
+  // Update the geodata
+  user.geodata = filteredGeodata;
+  await user.save();
+
+  res.status(200).json({
+    message: "geofence successfully removed",
+  });
+});
