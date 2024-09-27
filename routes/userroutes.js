@@ -9,7 +9,7 @@ const {
   getUser,
   getAllUsers,
   uploadUserPhoto,
-  resizeUserPhoto,
+  resizeUserPhoto
 } = require("../controllers/userController");
 
 // Mounting multiple router
@@ -22,8 +22,8 @@ router.post("/signin", signin);
 router.use(protect);
 
 // Geofence routes
-router.post("/:id/geodata", addGeofence); // Add geofence entry
-router.delete("/:id/geodata", removeGeofence); // Remove geofence entry
+router.patch("/:id/geodata", addGeofence);  // Add geofence entry
+router.delete("/:id/geodata", removeGeofence);  // Remove geofence entry
 
 router.patch("/:id", uploadUserPhoto, resizeUserPhoto, updateUser);
 router.delete("/:id", deleteUser);
