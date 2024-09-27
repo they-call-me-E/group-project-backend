@@ -1,9 +1,9 @@
-const catchasync = require("./../utils/catchasync");
+const catchasync = require("../utils/catchasync");
 const { User } = require("../models/user");
-const { userResponse } = require("./../utils/userResponse");
+const { userResponse } = require("../utils/userResponse");
 const multer = require("multer");
 const sharp = require("sharp");
-const AppError = require("./../utils/apperror");
+const AppError = require("../utils/apperror");
 
 // update user photo information code start
 const multerStorage = multer.memoryStorage();
@@ -146,6 +146,10 @@ module.exports.getUser = catchasync(async function (req, res, next) {
   });
 });
 
+const catchasync = require("../utils/catchasync");
+const { User } = require("../models/user");
+const AppError = require("../utils/apperror");
+
 // Add Geofence Entry
 module.exports.addGeofence = catchasync(async (req, res, next) => {
   const { currentGeofenceId, groupId, geofenceName } = req.body;
@@ -163,28 +167,25 @@ module.exports.addGeofence = catchasync(async (req, res, next) => {
   }
 
   // Remove any duplicate entries (oldest entry) based on currentGeofenceId and groupId
-  user.geodata = user.geodata.filter(
-    (entry) =>
-      !(
-        entry.currentGeofenceId === currentGeofenceId &&
-        entry.groupId === groupId
-      )
-  );
+  user.geodata = user.geodata.filter(entry => !(entry.currentGeofenceId === currentGeofenceId && entry.groupId === groupId));
 
   // Add the new geofence entry
   const newGeofenceEntry = {
     currentGeofenceId,
     groupId,
     geofenceName,
-    enteredAt: new Date(), // Set the current timestamp
+    enteredAt: new Date()  // Set the current timestamp
   };
 
   user.geodata.push(newGeofenceEntry);
-  await user.save();
 
+  // Save only the allowed fields, excluding sensitive ones like passwordConfirm
+  await user.save({
+    validateBeforeSave: false  // Prevent validating passwordConfirm during updates
+  });
   res.status(201).json({
     message: "geodata successfully added",
-    newGeodata: newGeofenceEntry,
+    newGeodata: newGeofenceEntry
   });
 });
 
@@ -201,17 +202,13 @@ module.exports.removeGeofence = catchasync(async (req, res, next) => {
 
   // Filter out the geofence entry to remove
   const filteredGeodata = user.geodata.filter(
-    (entry) =>
-      !(
-        entry.currentGeofenceId === currentGeofenceId &&
-        entry.groupId === groupId
-      )
+    entry => !(entry.currentGeofenceId === currentGeofenceId && entry.groupId === groupId)
   );
 
   // If no changes, return success message
   if (user.geodata.length === filteredGeodata.length) {
     return res.status(200).json({
-      message: "geofence successfully removed",
+      message: "geofence successfully removed"
     });
   }
 
@@ -220,6 +217,8 @@ module.exports.removeGeofence = catchasync(async (req, res, next) => {
   await user.save();
 
   res.status(200).json({
-    message: "geofence successfully removed",
+    message: "geofence successfully removed"
   });
 });
+
+// Other user controller functions (getUser, updateUser, etc.) can go below:
