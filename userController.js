@@ -146,9 +146,6 @@ module.exports.getUser = catchasync(async function (req, res, next) {
   });
 });
 
-const catchasync = require("../utils/catchasync");
-const { User } = require("../models/user");
-const AppError = require("../utils/apperror");
 
 // Add Geofence Entry
 module.exports.addGeofence = catchasync(async (req, res, next) => {
