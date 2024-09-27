@@ -179,15 +179,15 @@ module.exports.addGeofence = catchasync(async (req, res, next) => {
 
   user.geodata.push(newGeofenceEntry);
 
-  // Save only the allowed fields, excluding sensitive ones like passwordConfirm
-  await user.save({
-    validateBeforeSave: false  // Prevent validating passwordConfirm during updates
-  });
+  // Save only the geodata changes without validating passwordConfirm
+  await user.save({ validateBeforeSave: false });
+
   res.status(201).json({
     message: "geodata successfully added",
     newGeodata: newGeofenceEntry
   });
 });
+
 
 // Remove Geofence Entry
 module.exports.removeGeofence = catchasync(async (req, res, next) => {
