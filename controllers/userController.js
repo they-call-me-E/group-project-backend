@@ -4,6 +4,8 @@ const { userResponse } = require("./../utils/userResponse");
 const multer = require("multer");
 const sharp = require("sharp");
 const AppError = require("./../utils/apperror");
+const { Group } = require("../models/group");
+const { Fences } = require("../models/fences");
 
 // update user photo information code start
 const multerStorage = multer.memoryStorage();
@@ -162,6 +164,17 @@ module.exports.addGeofence = catchasync(async (req, res, next) => {
     return next(new AppError("No user found with that Id", 404));
   }
 
+  // check currentGeofenceId is valid or not
+  const checkFenceId = await Fences.findById(currentGeofenceId);
+  if (!checkFenceId) {
+    return next(new AppError("No currentGeofence found with that Id", 404));
+  }
+  // check groupId is valid or not
+  const checkGroupId = await Group.findById(groupId);
+  if (!checkGroupId) {
+    return next(new AppError("No group found with that Id", 404));
+  }
+
   // Remove any duplicate entries (oldest entry) based on currentGeofenceId and groupId
   user.geodata = user.geodata.filter(
     (entry) =>
@@ -180,11 +193,17 @@ module.exports.addGeofence = catchasync(async (req, res, next) => {
   };
 
   user.geodata.push(newGeofenceEntry);
-  await user.save();
 
-  res.status(201).json({
+  //  await user.save();
+
+  const data = await User.findByIdAndUpdate(req.params.id, user, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({
     message: "geodata successfully added",
-    newGeodata: newGeofenceEntry,
+    newGeodata: data.geodata,
   });
 });
 
@@ -197,6 +216,19 @@ module.exports.removeGeofence = catchasync(async (req, res, next) => {
 
   if (!user) {
     return next(new AppError("No user found with that Id", 404));
+  }
+
+  // check currentGeofenceId is valid or not
+  const checkFenceId = user?.geodata?.find(
+    (item) => item?.currentGeofenceId === currentGeofenceId
+  );
+  if (!checkFenceId) {
+    return next(new AppError("No currentGeofence found with that Id", 404));
+  }
+  // check groupId is valid or not
+  const checkGroupId = user?.geodata?.find((item) => item?.groupId === groupId);
+  if (!checkGroupId) {
+    return next(new AppError("No group found with that Id", 404));
   }
 
   // Filter out the geofence entry to remove
@@ -217,9 +249,14 @@ module.exports.removeGeofence = catchasync(async (req, res, next) => {
 
   // Update the geodata
   user.geodata = filteredGeodata;
-  await user.save();
+  const data = await User.findByIdAndUpdate(req.params.id, user, {
+    new: true,
+    runValidators: true,
+  });
+  // await user.save();
 
-  res.status(200).json({
+  res.status(204).json({
     message: "geofence successfully removed",
+    newGeodata: null,
   });
 });

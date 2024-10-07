@@ -96,13 +96,20 @@ const userSchema = new mongoose.Schema(
     // Geodata for geofence tracking
     geodata: [
       {
+        _id: {
+          type: String,
+          default: uuidv4,
+        },
         currentGeofenceId: {
           type: String,
           required: true, // Geofence ID is required
+          // my code (shakib)
+          ref: "Fences",
         },
         groupId: {
           type: String,
           required: true, // Group ID is required
+          ref: "Group",
         },
         geofenceName: {
           type: String,
