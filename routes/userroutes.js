@@ -22,6 +22,7 @@ router.post("/signin", signin);
 router.use(protect);
 
 // Geofence routes
+
 router.patch("/:id/geodata", addGeofence); // Add geofence entry
 router.delete("/:id/geodata", removeGeofence); // Remove geofence entry
 

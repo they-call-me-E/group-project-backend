@@ -1,6 +1,6 @@
-const catchasync = require("./../utils/catchasync");
+const catchasync = require("../utils/catchasync");
 const { User } = require("../models/user");
-const { userResponse } = require("./../utils/userResponse");
+const { userResponse } = require("../utils/userResponse");
 const multer = require("multer");
 const sharp = require("sharp");
 const AppError = require("./../utils/apperror");
@@ -194,8 +194,6 @@ module.exports.addGeofence = catchasync(async (req, res, next) => {
 
   user.geodata.push(newGeofenceEntry);
 
-  //  await user.save();
-
   const data = await User.findByIdAndUpdate(req.params.id, user, {
     new: true,
     runValidators: true,
@@ -254,9 +252,10 @@ module.exports.removeGeofence = catchasync(async (req, res, next) => {
     runValidators: true,
   });
   // await user.save();
-
   res.status(204).json({
     message: "geofence successfully removed",
     newGeodata: null,
   });
 });
+
+// Other user controller functions (getUser, updateUser, etc.) can go below:
