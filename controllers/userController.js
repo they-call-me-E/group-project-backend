@@ -201,7 +201,14 @@ module.exports.addGeofence = catchasync(async (req, res, next) => {
 
   res.status(200).json({
     message: "geodata successfully added",
-    newGeodata: data.geodata,
+    geoData: data?.geodata?.map((item) => {
+      return {
+        currentGeofenceId: item?.currentGeofenceId,
+        groupId: item?.groupId,
+        geofenceName: item?.geofenceName,
+        enteredAt: item?.enteredAt,
+      };
+    }),
   });
 });
 
@@ -254,7 +261,7 @@ module.exports.removeGeofence = catchasync(async (req, res, next) => {
   // await user.save();
   res.status(204).json({
     message: "geofence successfully removed",
-    newGeodata: null,
+    geoData: null,
   });
 });
 

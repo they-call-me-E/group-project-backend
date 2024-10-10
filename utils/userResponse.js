@@ -23,6 +23,14 @@ module.exports.userResponse = (user) => {
         charging: user.status.device.charging,
       },
     },
+    geoData: user?.geodata?.map((item) => {
+      return {
+        currentGeofenceId: item?.currentGeofenceId,
+        groupId: item?.groupId,
+        geofenceName: item?.geofenceName,
+        enteredAt: item?.enteredAt,
+      };
+    }),
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
