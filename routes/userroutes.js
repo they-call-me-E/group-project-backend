@@ -1,6 +1,12 @@
 const express = require("express");
 
-const { signup, signin, protect } = require("../controllers/authController");
+const {
+  signup,
+  signin,
+  protect,
+  forgotPassword,
+  resetPassword,
+} = require("../controllers/authController");
 const {
   addGeofence,
   removeGeofence,
@@ -17,6 +23,8 @@ const router = express.Router();
 
 router.post("/signup", signup);
 router.post("/signin", signin);
+router.post("/forgotPassword", forgotPassword);
+router.patch("/resetPassword/:token", resetPassword);
 
 //Protect All routes after this middleware
 router.use(protect);
