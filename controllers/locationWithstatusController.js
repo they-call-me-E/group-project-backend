@@ -1,5 +1,6 @@
 const catchAsync = require("../utils/catchasync");
 const AppError = require("./../utils/apperror");
+const { User } = require("../models/user");
 
 module.exports.updateLocationWithStatus = catchAsync(async (req, res, next) => {
   // Check existing user
