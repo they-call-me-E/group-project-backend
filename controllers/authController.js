@@ -155,5 +155,9 @@ module.exports.resetPassword = catchAsync(async (req, res, next) => {
   await user.save();
 
   //4)Log the user in,send jwt
-  createSendToken(user, 200, res);
+  // createSendToken(user, 200, res);
+
+  res.status(200).json({
+    message: "Password Reset Successful",
+  });
 });
