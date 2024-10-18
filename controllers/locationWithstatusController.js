@@ -95,10 +95,23 @@ module.exports.updateLocationWithStatus = catchAsync(async (req, res, next) => {
   }
   // Location updated code end
 
+  // Main body updated code start
+  const mainBody = {};
+
+  if (req?.body?.relation !== undefined && req?.body?.relation !== null) {
+    mainBody.relation = req.body.relation;
+  }
+
+  // You can add other top-level fields here in the future
+  // if (req?.body?.otherField !== undefined && req?.body?.otherField !== null) {
+  //   mainBody.otherField = req.body.otherField;
+  // }
+  // Main body updated code end
+
   // Update user document
-  const updatedLocationWithStatus = await User.findByIdAndUpdate(
+  const updatedUser = await User.findByIdAndUpdate(
     req.user.id,
-    { ...locationBody, ...statusBody },
+    { ...mainBody, ...locationBody, ...statusBody },
     {
       new: true,
       runValidators: true,
@@ -106,9 +119,11 @@ module.exports.updateLocationWithStatus = catchAsync(async (req, res, next) => {
   );
 
   res.status(200).json({
-    locationWithStatus: {
-      status: updatedLocationWithStatus.status,
-      location: updatedLocationWithStatus.location,
+    user: {
+      status: updatedUser.status,
+      location: updatedUser.location,
+      relation: updatedUser.relation, // Include the updated relation in the response
+      // Include other top-level fields if needed
     },
   });
 });
