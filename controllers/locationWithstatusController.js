@@ -68,6 +68,13 @@ module.exports.updateLocationWithStatus = catchAsync(async (req, res, next) => {
   ) {
     statusBody.status.device.charging = req.body.status.device.charging;
   }
+    
+  if (
+    req?.body?.status?.device?.currentApp !== undefined &&
+    req?.body?.status?.device?.currentApp !== null
+  ) {
+    statusBody.status.device.currentApp = req.body.status.device.currentApp;
+  }
   // Status updated code end
 
   // Location updated code start
