@@ -1,13 +1,13 @@
-const catchasync = require("../utils/catchasync");
+const catchAsync = require("../utils/catchAsync");
+const AppError = require("../utils/AppError");
 const { User } = require("../models/user");
 const { userResponse } = require("../utils/userResponse");
 const multer = require("multer");
 const sharp = require("sharp");
-const AppError = require("./../utils/apperror");
 const { Group } = require("../models/group");
 const { Fences } = require("../models/fences");
 
-// update user photo information code start
+// Update user photo information code start
 const multerStorage = multer.memoryStorage();
 const multerFilter = (req, file, cb) => {
   if (file.mimetype.startsWith("image")) {
@@ -21,9 +21,10 @@ const upload = multer({
   storage: multerStorage,
   fileFilter: multerFilter,
 });
-module.exports.uploadUserPhoto = upload.single("avatar");
 
-module.exports.resizeUserPhoto = catchasync(async (req, res, next) => {
+const uploadUserPhoto = upload.single("avatar");
+
+const resizeUserPhoto = catchAsync(async (req, res, next) => {
   if (!req.file) return next();
 
   req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`;
@@ -34,11 +35,14 @@ module.exports.resizeUserPhoto = catchasync(async (req, res, next) => {
     .jpeg({ quality: 90 })
     .toFile(`public/img/users/${req.file.filename}`);
 
+  // Save the filename to the request body so it can be saved to the database
+  req.body.avatar = req.file.filename;
+
   return next();
 });
-// update user photot information code end
+// Update user photo information code end
 
-// update user information controller function
+// Filter object utility function
 const filterObj = (obj, ...allowedFields) => {
   const newObj = {};
   Object.keys(obj).forEach((el) => {
@@ -46,68 +50,110 @@ const filterObj = (obj, ...allowedFields) => {
   });
   return newObj;
 };
-module.exports.updateUser = catchasync(async (req, res, next) => {
-  // check existing user
+
+// Update user information controller function
+const updateUser = catchAsync(async (req, res, next) => {
+  // Check existing user
   const existing_user = await User.findById(req.params.id);
 
   if (!existing_user) {
     return next(new AppError("No user found with that Id", 404));
   }
 
-  if (req.params.id !== req.user._id) {
-    return next(new AppError("You do not have permission this action", 403));
+  if (req.params.id !== req.user._id.toString()) {
+    return next(new AppError("You do not have permission for this action", 403));
   }
 
-  //1)Create error if user Posts password data
+  // Create error if user posts password data
   if (req.body.password || req.body.passwordConfirm) {
     return next(new AppError("This route is not for password updates.", 400));
   }
-  //2) Filtered out unwanted fields name that are not allowed to be updated
-  const filteredBody = filterObj(
-    req.body,
+
+  // Filter out unwanted fields
+  const allowedFields = [
     "name",
     "email",
     "phone",
     "relation",
     "location",
-    "status"
+    "status",
+    "avatar",
+  ];
+  const filteredBody = filterObj(req.body, ...allowedFields);
+
+  // Build the updateFields object using dot notation
+  const updateFields = {};
+
+  // Simple fields
+  if (filteredBody.name !== undefined) updateFields["name"] = filteredBody.name;
+  if (filteredBody.email !== undefined)
+    updateFields["email"] = filteredBody.email;
+  if (filteredBody.phone !== undefined)
+    updateFields["phone"] = filteredBody.phone;
+  if (filteredBody.relation !== undefined)
+    updateFields["relation"] = filteredBody.relation;
+  if (filteredBody.avatar !== undefined)
+    updateFields["avatar"] = filteredBody.avatar;
+
+  // Location fields
+  if (filteredBody.location) {
+    if (filteredBody.location.latitude !== undefined)
+      updateFields["location.latitude"] = filteredBody.location.latitude;
+    if (filteredBody.location.longitude !== undefined)
+      updateFields["location.longitude"] = filteredBody.location.longitude;
+    if (filteredBody.location.address !== undefined)
+      updateFields["location.address"] = filteredBody.location.address;
+  }
+
+  // Status fields
+  if (filteredBody.status) {
+    if (filteredBody.status.location_sharing !== undefined)
+      updateFields["status.location_sharing"] =
+        filteredBody.status.location_sharing;
+    if (filteredBody.status.isMoving !== undefined)
+      updateFields["status.isMoving"] = filteredBody.status.isMoving;
+    if (filteredBody.status.speed !== undefined)
+      updateFields["status.speed"] = filteredBody.status.speed;
+
+    if (filteredBody.status.device) {
+      if (filteredBody.status.device.screen !== undefined)
+        updateFields["status.device.screen"] = filteredBody.status.device.screen;
+      if (filteredBody.status.device.wifi !== undefined)
+        updateFields["status.device.wifi"] = filteredBody.status.device.wifi;
+      if (filteredBody.status.device.battery_level !== undefined)
+        updateFields["status.device.battery_level"] =
+          filteredBody.status.device.battery_level;
+      if (filteredBody.status.device.charging !== undefined)
+        updateFields["status.device.charging"] =
+          filteredBody.status.device.charging;
+      if (filteredBody.status.device.currentApp !== undefined)
+        updateFields["status.device.currentApp"] =
+          filteredBody.status.device.currentApp;
+    }
+  }
+
+  // Update user document using $set
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user.id,
+    { $set: updateFields },
+    {
+      new: true,
+      runValidators: true,
+    }
   );
 
-  if (req.file) filteredBody.avatar = req.file.filename;
-
-  //let new_req_body = JSON.parse(filteredBody);
-
-  const convertedData = {
-    ...filteredBody,
-  };
-
-  if (filteredBody?.location) {
-    convertedData["location"] = {
-      ...filteredBody.location,
-    };
-  }
-
-  if (filteredBody?.status) {
-    convertedData["status"] = filteredBody.status;
-  }
-
-  //3)Update user document
-  const updatedUser = await User.findByIdAndUpdate(req.user.id, convertedData, {
-    new: true,
-    runValidators: true,
-  });
   res.status(200).json({
     user: userResponse(updatedUser),
   });
 });
 
-// delete user information controller function
-
-module.exports.deleteUser = catchasync(async function (req, res, next) {
-  if (req.params.id !== JSON.stringify(req.user._id).replace(/"/g, "")) {
-    return next(new AppError("You do not have permission this action", 403));
+// Delete user information controller function
+const deleteUser = catchAsync(async (req, res, next) => {
+  if (req.params.id !== req.user._id.toString()) {
+    return next(new AppError("You do not have permission for this action", 403));
   }
-  // check existing user
+
+  // Check existing user
   const existing_user = await User.findById(req.params.id);
 
   if (!existing_user) {
@@ -118,15 +164,15 @@ module.exports.deleteUser = catchasync(async function (req, res, next) {
   if (!user) {
     return next(new AppError("No user found with that Id", 404));
   }
+
   res.status(204).json({
     status: "success",
     data: null,
   });
 });
 
-// read all users information
-
-module.exports.getAllUsers = catchasync(async function (req, res, next) {
+// Read all users information
+const getAllUsers = catchAsync(async (req, res, next) => {
   const users = await User.find({});
 
   res.status(200).json({
@@ -135,21 +181,22 @@ module.exports.getAllUsers = catchasync(async function (req, res, next) {
     }),
   });
 });
-// read single user information
 
-module.exports.getUser = catchasync(async function (req, res, next) {
+// Read single user information
+const getUser = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.params.id);
 
   if (!user) {
     return next(new AppError("No User found with that Id", 404));
   }
+
   res.status(200).json({
     user: userResponse(user),
   });
 });
 
 // Add Geofence Entry
-module.exports.addGeofence = catchasync(async (req, res, next) => {
+const addGeofence = catchAsync(async (req, res, next) => {
   const { currentGeofenceId, groupId, geofenceName } = req.body;
 
   // Validate the geofenceName is provided
@@ -164,18 +211,19 @@ module.exports.addGeofence = catchasync(async (req, res, next) => {
     return next(new AppError("No user found with that Id", 404));
   }
 
-  // check currentGeofenceId is valid or not
+  // Check currentGeofenceId is valid or not
   const checkFenceId = await Fences.findById(currentGeofenceId);
   if (!checkFenceId) {
     return next(new AppError("No currentGeofence found with that Id", 404));
   }
-  // check groupId is valid or not
+
+  // Check groupId is valid or not
   const checkGroupId = await Group.findById(groupId);
   if (!checkGroupId) {
     return next(new AppError("No group found with that Id", 404));
   }
 
-  // Remove any duplicate entries (oldest entry) based on currentGeofenceId and groupId
+  // Remove any duplicate entries based on currentGeofenceId and groupId
   user.geodata = user.geodata.filter(
     (entry) =>
       !(
@@ -194,26 +242,24 @@ module.exports.addGeofence = catchasync(async (req, res, next) => {
 
   user.geodata.push(newGeofenceEntry);
 
-  const data = await User.findByIdAndUpdate(req.params.id, user, {
-    new: true,
-    runValidators: true,
-  });
+  // Save the updated user document
+  await user.save();
 
   res.status(200).json({
     message: "geodata successfully added",
-    geoData: data?.geodata?.map((item) => {
+    geoData: user.geodata.map((item) => {
       return {
-        currentGeofenceId: item?.currentGeofenceId,
-        groupId: item?.groupId,
-        geofenceName: item?.geofenceName,
-        enteredAt: item?.enteredAt,
+        currentGeofenceId: item.currentGeofenceId,
+        groupId: item.groupId,
+        geofenceName: item.geofenceName,
+        enteredAt: item.enteredAt,
       };
     }),
   });
 });
 
 // Remove Geofence Entry
-module.exports.removeGeofence = catchasync(async (req, res, next) => {
+const removeGeofence = catchAsync(async (req, res, next) => {
   const { currentGeofenceId, groupId } = req.body;
 
   // Find the user
@@ -223,46 +269,46 @@ module.exports.removeGeofence = catchasync(async (req, res, next) => {
     return next(new AppError("No user found with that Id", 404));
   }
 
-  // check currentGeofenceId is valid or not
-  const checkFenceId = user?.geodata?.find(
-    (item) => item?.currentGeofenceId === currentGeofenceId
-  );
-  if (!checkFenceId) {
-    return next(new AppError("No currentGeofence found with that Id", 404));
-  }
-  // check groupId is valid or not
-  const checkGroupId = user?.geodata?.find((item) => item?.groupId === groupId);
-  if (!checkGroupId) {
-    return next(new AppError("No group found with that Id", 404));
-  }
-
-  // Filter out the geofence entry to remove
-  const filteredGeodata = user.geodata.filter(
-    (entry) =>
-      !(
-        entry.currentGeofenceId === currentGeofenceId &&
-        entry.groupId === groupId
-      )
+  // Check if the geofence entry exists
+  const geofenceIndex = user.geodata.findIndex(
+    (item) =>
+      item.currentGeofenceId === currentGeofenceId &&
+      item.groupId === groupId
   );
 
-  // If no changes, return success message
-  if (user.geodata.length === filteredGeodata.length) {
-    return res.status(200).json({
-      message: "geofence successfully removed",
-    });
+  if (geofenceIndex === -1) {
+    return next(
+      new AppError("No geofence entry found with the provided IDs", 404)
+    );
   }
 
-  // Update the geodata
-  user.geodata = filteredGeodata;
-  const data = await User.findByIdAndUpdate(req.params.id, user, {
-    new: true,
-    runValidators: true,
-  });
-  // await user.save();
-  res.status(204).json({
+  // Remove the geofence entry
+  user.geodata.splice(geofenceIndex, 1);
+
+  // Save the updated user document
+  await user.save();
+
+  res.status(200).json({
     message: "geofence successfully removed",
-    geoData: null,
+    geoData: user.geodata.map((item) => {
+      return {
+        currentGeofenceId: item.currentGeofenceId,
+        groupId: item.groupId,
+        geofenceName: item.geofenceName,
+        enteredAt: item.enteredAt,
+      };
+    }),
   });
 });
 
-// Other user controller functions (getUser, updateUser, etc.) can go below:
+// Export all functions
+module.exports = {
+  uploadUserPhoto,
+  resizeUserPhoto,
+  updateUser,
+  deleteUser,
+  getAllUsers,
+  getUser,
+  addGeofence,
+  removeGeofence,
+};
