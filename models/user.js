@@ -92,6 +92,9 @@ const userSchema = new mongoose.Schema(
         charging: {
           type: Boolean,
         },
+        currentApp: {
+          type: string,
+        },
       },
     },
     // Geodata for geofence tracking
