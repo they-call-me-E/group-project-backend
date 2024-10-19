@@ -10,115 +10,97 @@ module.exports.updateLocationWithStatus = catchAsync(async (req, res, next) => {
     return next(new AppError("No user found with that Id", 404));
   }
 
-  if (req.params.id !== JSON.stringify(req.user._id).replace(/"/g, "")) {
+  if (req.params.id !== req.user._id.toString()) {
     return next(
       new AppError("You do not have permission for this action", 403)
     );
   }
 
-  // Status updated code start
-  const statusBody = { status: { device: {} } };
+  // Build the update object using dot notation
+  const updateFields = {};
 
-  if (
-    req?.body?.status?.location_sharing !== undefined &&
-    req?.body?.status?.location_sharing !== null
-  ) {
-    statusBody.status.location_sharing = req.body.status.location_sharing;
+  // Main body fields
+  if (req.body.relation !== undefined && req.body.relation !== null) {
+    updateFields["relation"] = req.body.relation;
   }
 
+  // Location fields
   if (
-    req?.body?.status?.isMoving !== undefined &&
-    req?.body?.status?.isMoving !== null
+    req.body.location?.latitude !== undefined &&
+    req.body.location.latitude !== null
   ) {
-    statusBody.status.isMoving = req.body.status.isMoving;
+    updateFields["location.latitude"] = req.body.location.latitude;
+  }
+  if (
+    req.body.location?.longitude !== undefined &&
+    req.body.location.longitude !== null
+  ) {
+    updateFields["location.longitude"] = req.body.location.longitude;
+  }
+  if (
+    req.body.location?.address !== undefined &&
+    req.body.location.address !== null
+  ) {
+    updateFields["location.address"] = req.body.location.address;
   }
 
+  // Status fields
   if (
-    req?.body?.status?.speed !== undefined &&
-    req?.body?.status?.speed !== null
+    req.body.status?.location_sharing !== undefined &&
+    req.body.status.location_sharing !== null
   ) {
-    statusBody.status.speed = req.body.status.speed;
+    updateFields["status.location_sharing"] = req.body.status.location_sharing;
+  }
+  if (
+    req.body.status?.isMoving !== undefined &&
+    req.body.status.isMoving !== null
+  ) {
+    updateFields["status.isMoving"] = req.body.status.isMoving;
+  }
+  if (
+    req.body.status?.speed !== undefined &&
+    req.body.status.speed !== null
+  ) {
+    updateFields["status.speed"] = req.body.status.speed;
   }
 
+  // Status.device fields
   if (
-    req?.body?.status?.device?.screen !== undefined &&
-    req?.body?.status?.device?.screen !== null
+    req.body.status?.device?.screen !== undefined &&
+    req.body.status.device.screen !== null
   ) {
-    statusBody.status.device.screen = req.body.status.device.screen;
+    updateFields["status.device.screen"] = req.body.status.device.screen;
   }
-
   if (
-    req?.body?.status?.device?.wifi !== undefined &&
-    req?.body?.status?.device?.wifi !== null
+    req.body.status?.device?.wifi !== undefined &&
+    req.body.status.device.wifi !== null
   ) {
-    statusBody.status.device.wifi = req.body.status.device.wifi;
+    updateFields["status.device.wifi"] = req.body.status.device.wifi;
   }
-
   if (
-    req?.body?.status?.device?.battery_level !== undefined &&
-    req?.body?.status?.device?.battery_level !== null
+    req.body.status?.device?.battery_level !== undefined &&
+    req.body.status.device.battery_level !== null
   ) {
-    statusBody.status.device.battery_level =
+    updateFields["status.device.battery_level"] =
       req.body.status.device.battery_level;
   }
-
   if (
-    req?.body?.status?.device?.charging !== undefined &&
-    req?.body?.status?.device?.charging !== null
+    req.body.status?.device?.charging !== undefined &&
+    req.body.status.device.charging !== null
   ) {
-    statusBody.status.device.charging = req.body.status.device.charging;
+    updateFields["status.device.charging"] = req.body.status.device.charging;
   }
-    
   if (
-    req?.body?.status?.device?.currentApp !== undefined &&
-    req?.body?.status?.device?.currentApp !== null
+    req.body.status?.device?.currentApp !== undefined &&
+    req.body.status.device.currentApp !== null
   ) {
-    statusBody.status.device.currentApp = req.body.status.device.currentApp;
-  }
-  // Status updated code end
-
-  // Location updated code start
-  const locationBody = { location: {} };
-
-  if (
-    req?.body?.location?.latitude !== undefined &&
-    req?.body?.location?.latitude !== null
-  ) {
-    locationBody.location.latitude = req.body.location.latitude;
+    updateFields["status.device.currentApp"] = req.body.status.device.currentApp;
   }
 
-  if (
-    req?.body?.location?.longitude !== undefined &&
-    req?.body?.location?.longitude !== null
-  ) {
-    locationBody.location.longitude = req.body.location.longitude;
-  }
-
-  if (
-    req?.body?.location?.address !== undefined &&
-    req?.body?.location?.address !== null
-  ) {
-    locationBody.location.address = req.body.location.address;
-  }
-  // Location updated code end
-
-  // Main body updated code start
-  const mainBody = {};
-
-  if (req?.body?.relation !== undefined && req?.body?.relation !== null) {
-    mainBody.relation = req.body.relation;
-  }
-
-  // You can add other top-level fields here in the future
-  // if (req?.body?.otherField !== undefined && req?.body?.otherField !== null) {
-  //   mainBody.otherField = req.body.otherField;
-  // }
-  // Main body updated code end
-
-  // Update user document
+  // Update user document using $set
   const updatedUser = await User.findByIdAndUpdate(
     req.user.id,
-    { ...mainBody, ...locationBody, ...statusBody },
+    { $set: updateFields },
     {
       new: true,
       runValidators: true,
@@ -129,8 +111,7 @@ module.exports.updateLocationWithStatus = catchAsync(async (req, res, next) => {
     user: {
       status: updatedUser.status,
       location: updatedUser.location,
-      relation: updatedUser.relation, // Include the updated relation in the response
-      // Include other top-level fields if needed
+      relation: updatedUser.relation,
     },
   });
 });
