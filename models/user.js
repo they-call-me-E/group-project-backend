@@ -93,7 +93,7 @@ const userSchema = new mongoose.Schema(
           type: Boolean,
         },
         currentApp: {
-          type: string,
+          type: String,
         },
       },
     },
