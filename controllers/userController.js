@@ -1,5 +1,5 @@
-const catchAsync = require("../utils/catchAsync");
-const AppError = require("../utils/AppError");
+const catchAsync = require("../utils/catchasync");
+const AppError = require("./../utils/apperror");
 const { User } = require("../models/user");
 const { userResponse } = require("../utils/userResponse");
 const multer = require("multer");
@@ -86,10 +86,8 @@ const updateUser = catchAsync(async (req, res, next) => {
 
   // Simple fields
   if (filteredBody.name !== undefined) updateFields["name"] = filteredBody.name;
-  if (filteredBody.email !== undefined)
-    updateFields["email"] = filteredBody.email;
-  if (filteredBody.phone !== undefined)
-    updateFields["phone"] = filteredBody.phone;
+  if (filteredBody.email !== undefined) updateFields["email"] = filteredBody.email;
+  if (filteredBody.phone !== undefined) updateFields["phone"] = filteredBody.phone;
   if (filteredBody.relation !== undefined)
     updateFields["relation"] = filteredBody.relation;
   if (filteredBody.avatar !== undefined)
