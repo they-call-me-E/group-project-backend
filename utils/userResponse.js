@@ -21,6 +21,7 @@ module.exports.userResponse = (user) => {
         wifi: user.status.device.wifi,
         battery_level: user.status.device.battery_level,
         charging: user.status.device.charging,
+        currentApp: user.status.device.currentApp,
       },
     },
     geoData: user?.geodata?.map((item) => {
