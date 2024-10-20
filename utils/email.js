@@ -3,11 +3,12 @@ const { convert } = require("html-to-text");
 const sgMail = require("@sendgrid/mail");
 
 module.exports = class Email {
-  constructor(user, url) {
+  constructor(user, url, baseUrl) {
     this.to = user.email;
     this.firstName = user.name.split(" ")[0];
     this.url = url;
     this.from = `${process.env.EMAIL_FROM}`;
+    this.baseUrl = baseUrl;
   }
 
   // Send the actual email start
@@ -15,9 +16,9 @@ module.exports = class Email {
     // 1) Render HTML based on a pug template
     const html = pug.renderFile(`${__dirname}/../views/email/${template}.pug`, {
       firstName: this.firstName,
-      front_end_url: `${process.env.FRONTEND_WEBSITE_URL}/${this.url.substring(
-        this.url.lastIndexOf("/") + 1
-      )}`,
+      front_end_url: `${this.baseUrl}/${
+        process.env.WEBSITE_RESET_PASSWORD_URL
+      }?token=${this.url.substring(this.url.lastIndexOf("/") + 1)}`,
       subject,
       url: this.url,
     });
