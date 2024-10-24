@@ -6,6 +6,8 @@ const multer = require("multer");
 const sharp = require("sharp");
 const { Group } = require("../models/group");
 const { Fences } = require("../models/fences");
+const fs = require("fs");
+const path = require("path");
 
 // Update user photo information code start
 const multerStorage = multer.memoryStorage();
@@ -20,6 +22,7 @@ const multerFilter = (req, file, cb) => {
 const upload = multer({
   storage: multerStorage,
   fileFilter: multerFilter,
+  limits: { fileSize: 1024 * 1024 * 5 }, // Limit 5MB
 });
 
 const uploadUserPhoto = upload.single("avatar");
@@ -28,6 +31,35 @@ const resizeUserPhoto = catchAsync(async (req, res, next) => {
   if (!req.file) return next();
 
   req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`;
+
+  // Check existing user
+  const existing_user = await User.findById(req.params.id);
+
+  if (!existing_user) {
+    return next(new AppError("No user found with that Id", 404));
+  }
+
+  if (req.params.id !== req.user._id.toString()) {
+    return next(
+      new AppError("You do not have permission for this action", 403)
+    );
+  }
+
+  // If the user already has a profile image, remove the old one (code start)
+  if (existing_user.avatar) {
+    const oldImagePath = path.join(
+      __dirname,
+      "../public/img/users/",
+      existing_user.avatar
+    );
+    fs.unlink(oldImagePath, (err) => {
+      if (err) {
+        return next(new AppError("Failed to remove old image", 500));
+      }
+    });
+  }
+
+  // If the user already has a profile image, remove the old one (code end)
 
   await sharp(req.file.buffer)
     .resize(500, 500)
@@ -61,7 +93,9 @@ const updateUser = catchAsync(async (req, res, next) => {
   }
 
   if (req.params.id !== req.user._id.toString()) {
-    return next(new AppError("You do not have permission for this action", 403));
+    return next(
+      new AppError("You do not have permission for this action", 403)
+    );
   }
 
   // Create error if user posts password data
@@ -86,8 +120,10 @@ const updateUser = catchAsync(async (req, res, next) => {
 
   // Simple fields
   if (filteredBody.name !== undefined) updateFields["name"] = filteredBody.name;
-  if (filteredBody.email !== undefined) updateFields["email"] = filteredBody.email;
-  if (filteredBody.phone !== undefined) updateFields["phone"] = filteredBody.phone;
+  if (filteredBody.email !== undefined)
+    updateFields["email"] = filteredBody.email;
+  if (filteredBody.phone !== undefined)
+    updateFields["phone"] = filteredBody.phone;
   if (filteredBody.relation !== undefined)
     updateFields["relation"] = filteredBody.relation;
   if (filteredBody.avatar !== undefined)
@@ -115,7 +151,8 @@ const updateUser = catchAsync(async (req, res, next) => {
 
     if (filteredBody.status.device) {
       if (filteredBody.status.device.screen !== undefined)
-        updateFields["status.device.screen"] = filteredBody.status.device.screen;
+        updateFields["status.device.screen"] =
+          filteredBody.status.device.screen;
       if (filteredBody.status.device.wifi !== undefined)
         updateFields["status.device.wifi"] = filteredBody.status.device.wifi;
       if (filteredBody.status.device.battery_level !== undefined)
@@ -148,7 +185,9 @@ const updateUser = catchAsync(async (req, res, next) => {
 // Delete user information controller function
 const deleteUser = catchAsync(async (req, res, next) => {
   if (req.params.id !== req.user._id.toString()) {
-    return next(new AppError("You do not have permission for this action", 403));
+    return next(
+      new AppError("You do not have permission for this action", 403)
+    );
   }
 
   // Check existing user
@@ -162,6 +201,22 @@ const deleteUser = catchAsync(async (req, res, next) => {
   if (!user) {
     return next(new AppError("No user found with that Id", 404));
   }
+
+  // If the user already has a profile image, remove the old one (code start)
+  if (existing_user.avatar) {
+    const oldImagePath = path.join(
+      __dirname,
+      "../public/img/users/",
+      existing_user.avatar
+    );
+    fs.unlink(oldImagePath, (err) => {
+      if (err) {
+        return next(new AppError("Failed to remove old image", 500));
+      }
+    });
+  }
+
+  // If the user already has a profile image, remove the old one (code end)
 
   res.status(204).json({
     status: "success",
@@ -270,8 +325,7 @@ const removeGeofence = catchAsync(async (req, res, next) => {
   // Check if the geofence entry exists
   const geofenceIndex = user.geodata.findIndex(
     (item) =>
-      item.currentGeofenceId === currentGeofenceId &&
-      item.groupId === groupId
+      item.currentGeofenceId === currentGeofenceId && item.groupId === groupId
   );
 
   if (geofenceIndex === -1) {
