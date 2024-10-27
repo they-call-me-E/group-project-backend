@@ -37,6 +37,6 @@ router.delete("/:id/geodata", removeGeofence); // Remove geofence entry
 router.patch("/:id", uploadUserPhoto, resizeUserPhoto, updateUser);
 router.delete("/:id", deleteUser);
 router.get("/", getAllUsers);
-router.route("/:id").get(getUser);
+router.get("/:id", getUser);
 
 module.exports = router;
