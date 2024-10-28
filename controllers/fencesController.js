@@ -55,6 +55,7 @@ module.exports.getGroupFences = catchasync(async function (req, res, next) {
   let filterFencesData = [];
   let groupMembersArr = [];
   const existing_group = await Group.findById(req.params.id);
+
   if (!existing_group) {
     return next(new AppError("No group found with that GroupId", 404));
   }
@@ -102,18 +103,35 @@ module.exports.getGroupFences = catchasync(async function (req, res, next) {
 
   // i do not want to send response if user is not exist in the group
 
-  groupMembersArr.find((item) => {
+  // groupMembersArr.find((item) => {
+  //   if (
+  //     JSON.stringify(item._id).replace(/"/g, "") ==
+  //     JSON.stringify(req.user._id).replace(/"/g, "")
+  //   ) {
+
+  //     res.status(200).json({
+  //       document: filterArr,
+  //     });
+  //   } else {
+  //     return next(new AppError("Access Denied", 403));
+  //   }
+  // });
+
+  const singleItem = groupMembersArr.find((item) => {
     if (
       JSON.stringify(item._id).replace(/"/g, "") ==
       JSON.stringify(req.user._id).replace(/"/g, "")
     ) {
-      res.status(200).json({
-        document: filterArr,
-      });
-    } else {
-      return next(new AppError("Access Denied", 403));
+      return true;
     }
   });
+  if (singleItem) {
+    res.status(200).json({
+      document: filterArr,
+    });
+  } else {
+    return next(new AppError("Access Denied", 403));
+  }
 });
 
 // group fences object
@@ -181,18 +199,34 @@ module.exports.getSingleGroupFences = catchasync(async function (
 
   // i do not want to send response if user is not exist in the group
 
-  groupMembersArr.find((item) => {
+  // groupMembersArr.find((item) => {
+  //   if (
+  //     JSON.stringify(item._id).replace(/"/g, "") ==
+  //     JSON.stringify(req.user._id).replace(/"/g, "")
+  //   ) {
+  //     res.status(200).json({
+  //       document,
+  //     });
+  //   } else {
+  //     return next(new AppError("Access Denied", 403));
+  //   }
+  // });
+
+  const singleItem = groupMembersArr.find((item) => {
     if (
       JSON.stringify(item._id).replace(/"/g, "") ==
       JSON.stringify(req.user._id).replace(/"/g, "")
     ) {
-      res.status(200).json({
-        document,
-      });
-    } else {
-      return next(new AppError("Access Denied", 403));
+      return true;
     }
   });
+  if (singleItem) {
+    res.status(200).json({
+      document,
+    });
+  } else {
+    return next(new AppError("Access Denied", 403));
+  }
 });
 
 // update fences functionality
