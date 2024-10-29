@@ -68,7 +68,7 @@ const userSchema = new mongoose.Schema(
         type: String,
       },
       timestamp: {
-        type: Date,
+        type: String,
       },
     },
     status: {
