@@ -2,7 +2,7 @@ const catchAsync = require("../utils/catchasync");
 const { User } = require("../models/user");
 const jwt = require("jsonwebtoken");
 const { promisify } = require("util");
-const { userResponse } = require("./../utils/userResponse");
+const { userWithPresignedAvatarUrl } = require("./../utils/userResponse");
 const AppError = require("./../utils/apperror");
 const crypto = require("crypto");
 const Email = require("./../utils/email");
@@ -17,12 +17,15 @@ const signToken = ({ _id, role, name, email }) => {
   );
 };
 
-const createSendToken = (user, statusCode, res) => {
+const createSendToken = async (user, statusCode, res) => {
   const token = signToken(user);
   user.password = undefined;
+
+  const userInfo = await userWithPresignedAvatarUrl(user);
+
   res.status(statusCode).json({
     token,
-    user: userResponse(user),
+    user: userInfo,
   });
 };
 
@@ -33,7 +36,8 @@ module.exports.signup = catchAsync(async (req, res, next) => {
     return next(new AppError("Email is already exist.", 400));
   }
   const newUser = await User.create(req.body);
-  const user = userResponse(newUser);
+  // const user = userResponse(newUser);
+  const user = await userWithPresignedAvatarUrl(newUser);
   res.status(200).json({
     user,
   });

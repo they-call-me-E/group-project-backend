@@ -1,16 +1,20 @@
 const catchAsync = require("../utils/catchasync");
 const AppError = require("./../utils/apperror");
 const { User } = require("../models/user");
-const { userResponse } = require("../utils/userResponse");
+const { userWithPresignedAvatarUrl } = require("../utils/userResponse");
 const multer = require("multer");
 const sharp = require("sharp");
 const { Group } = require("../models/group");
 const { Fences } = require("../models/fences");
 const fs = require("fs");
 const path = require("path");
+const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const { BUCKET_NAME, s3 } = require("./../utils/awsS3");
 
 // Update user photo information code start
+
 const multerStorage = multer.memoryStorage();
+
 const multerFilter = (req, file, cb) => {
   if (file.mimetype.startsWith("image")) {
     cb(null, true);
@@ -22,21 +26,27 @@ const multerFilter = (req, file, cb) => {
 const upload = multer({
   storage: multerStorage,
   fileFilter: multerFilter,
-  limits: { fileSize: 1024 * 1024 * 5 }, // Limit 5MB
+  limits: { fileSize: 1024 * 1024 * 5 }, // 5MB size limit
 });
 
 const uploadUserPhoto = upload.single("avatar");
-
 const resizeUserPhoto = catchAsync(async (req, res, next) => {
-  if (!req.file) return next();
+  if (!req.file) return next(); // No file uploaded, proceed to next middleware
 
-  req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`;
+  const filename = `user-${req.user.id}-${Date.now()}.jpeg`;
 
-  // Check existing user
-  const existing_user = await User.findById(req.params.id);
+  // Resize and convert image to buffer
+  const processedImage = await sharp(req.file.buffer)
+    .resize(500, 500)
+    .toFormat("jpeg")
+    .jpeg({ quality: 90 })
+    .toBuffer();
 
-  if (!existing_user) {
-    return next(new AppError("No user found with that Id", 404));
+  // Check if user exists in the database
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return next(new AppError("No user found with that ID", 404));
   }
 
   if (req.params.id !== req.user._id.toString()) {
@@ -45,33 +55,39 @@ const resizeUserPhoto = catchAsync(async (req, res, next) => {
     );
   }
 
-  // If the user already has a profile image, remove the old one (code start)
-  if (existing_user.avatar) {
-    const oldImagePath = path.join(
-      __dirname,
-      "../public/img/users/",
-      existing_user.avatar
-    );
-    fs.unlink(oldImagePath, (err) => {
-      if (err) {
-        return next(new AppError("Failed to remove old image", 500));
-      }
-    });
+  // Delete the user's existing avatar from S3, if it exists
+  if (user.avatar) {
+    const oldImageKey = user.avatar.split(`users/`)[1]; // Extract key from URL
+    const deleteParams = {
+      Bucket: BUCKET_NAME,
+      Key: `users/${oldImageKey}`,
+    };
+
+    try {
+      await s3.send(new DeleteObjectCommand(deleteParams));
+    } catch (err) {
+      return next(new AppError("Failed to delete old image from AWS S3", 500));
+    }
   }
 
-  // If the user already has a profile image, remove the old one (code end)
+  // Upload the new image to S3
+  const uploadParams = {
+    Bucket: BUCKET_NAME,
+    Key: `users/${filename}`,
+    Body: processedImage,
+    ContentType: "image/jpeg",
+  };
 
-  await sharp(req.file.buffer)
-    .resize(500, 500)
-    .toFormat("jpeg")
-    .jpeg({ quality: 90 })
-    .toFile(`public/img/users/${req.file.filename}`);
-
-  // Save the filename to the request body so it can be saved to the database
-  req.body.avatar = req.file.filename;
-
-  return next();
+  try {
+    await s3.send(new PutObjectCommand(uploadParams));
+    req.body.avatar = `${filename}`;
+    next();
+  } catch (err) {
+    console.error("Error uploading new image to S3:", err);
+    return next(new AppError("Failed to upload new image to AWS S3", 500));
+  }
 });
+
 // Update user photo information code end
 
 // Filter object utility function
@@ -176,9 +192,10 @@ const updateUser = catchAsync(async (req, res, next) => {
       runValidators: true,
     }
   );
+  const userInfo = await userWithPresignedAvatarUrl(updatedUser);
 
   res.status(200).json({
-    user: userResponse(updatedUser),
+    user: userInfo,
   });
 });
 
@@ -228,23 +245,40 @@ const deleteUser = catchAsync(async (req, res, next) => {
 const getAllUsers = catchAsync(async (req, res, next) => {
   const users = await User.find({});
 
+  // const usersWithPresignedUrls = await Promise.all(
+  //   users.map(async (item) => {
+  //     const presignedUrl = await getPresignedUrl(`users/${item.avatar}`);
+  //     return {
+  //       ...userResponse(item),
+  //       avatar: presignedUrl,
+  //     };
+  //   })
+  // );
+
+  // return res.status(200).json({ users: usersWithPresignedUrls });
+  const usersWithUrls = await Promise.all(
+    users.map(async (user) => {
+      return await userWithPresignedAvatarUrl(user);
+    })
+  );
+
   res.status(200).json({
-    users: users.map((item) => {
-      return userResponse(item);
-    }),
+    users: usersWithUrls,
   });
 });
 
 // Read single user information
 const getUser = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.params.id);
-
+  let avatar = "";
   if (!user) {
     return next(new AppError("No User found with that Id", 404));
   }
 
+  const userInfo = await userWithPresignedAvatarUrl(user);
+
   res.status(200).json({
-    user: userResponse(user),
+    user: userInfo,
   });
 });
 
