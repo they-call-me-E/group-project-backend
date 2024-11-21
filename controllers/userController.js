@@ -57,7 +57,7 @@ const resizeUserPhoto = catchAsync(async (req, res, next) => {
 
   // Delete the user's existing avatar from S3, if it exists
   if (user.avatar) {
-    const oldImageKey = user.avatar.split(`users/`)[1]; // Extract key from URL
+    const oldImageKey = user.avatar; // Extract key from URL
     const deleteParams = {
       Bucket: BUCKET_NAME,
       Key: `users/${oldImageKey}`,
