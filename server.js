@@ -1,5 +1,8 @@
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
+const http = require("http");
+const { Server } = require("socket.io");
+const { Group } = require("./models/group");
 
 dotenv.config({
   path: "./.env",
@@ -20,8 +23,38 @@ mongoose
   });
 const app = require("./app");
 
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PATCH", "DELETE"],
+  },
+});
+
+io.on("connection", (socket) => {
+  // Fetch groups for the connected user
+  socket.on("joinUserGroups", async (userId) => {
+    const userGroups = await Group.find({ members: { $in: [userId] } });
+
+    userGroups.forEach((group) => {
+      socket.join(group._id);
+      console.log(`User ${userId} joined group: ${group._id}`);
+    });
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
+});
+
+app.set("socketio", io);
+
 //start server
 const port = process.env.PORT;
-const server = app.listen(port, function () {
+server.listen(port, () => {
   console.log(`This port number is ${port}`);
 });
+// const port = process.env.PORT;
+// const server = app.listen(port, function () {
+//   console.log(`This port number is ${port}`);
+// });

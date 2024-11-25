@@ -1,6 +1,8 @@
 const catchAsync = require("../utils/catchasync");
 const AppError = require("./../utils/apperror");
 const { User } = require("../models/user");
+const { Group } = require("../models/group");
+const { userWithPresignedAvatarUrl } = require("../utils/userResponse");
 
 module.exports.updateLocationWithStatus = catchAsync(async (req, res, next) => {
   // Check existing user
@@ -57,10 +59,7 @@ module.exports.updateLocationWithStatus = catchAsync(async (req, res, next) => {
   ) {
     updateFields["status.isMoving"] = req.body.status.isMoving;
   }
-  if (
-    req.body.status?.speed !== undefined &&
-    req.body.status.speed !== null
-  ) {
+  if (req.body.status?.speed !== undefined && req.body.status.speed !== null) {
     updateFields["status.speed"] = req.body.status.speed;
   }
 
@@ -94,7 +93,8 @@ module.exports.updateLocationWithStatus = catchAsync(async (req, res, next) => {
     req.body.status?.device?.currentApp !== undefined &&
     req.body.status.device.currentApp !== null
   ) {
-    updateFields["status.device.currentApp"] = req.body.status.device.currentApp;
+    updateFields["status.device.currentApp"] =
+      req.body.status.device.currentApp;
   }
 
   // Update user document using $set
@@ -106,6 +106,24 @@ module.exports.updateLocationWithStatus = catchAsync(async (req, res, next) => {
       runValidators: true,
     }
   );
+
+  // socket code start
+  const io = req.app.get("socketio");
+  const userGroups = await Group.find({
+    members: { $in: [updatedUser._id] },
+  });
+
+  const userInfo = await userWithPresignedAvatarUrl(updatedUser);
+
+  userGroups.forEach((group) => {
+    io.to(group._id).emit("userLocationUpdated", {
+      // userId: updatedUser._id,
+      // location: updatedUser.location,
+      // status: updatedUser.status,
+      userInfo,
+    });
+  });
+  // socket code end
 
   res.status(200).json({
     user: {
