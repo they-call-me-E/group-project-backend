@@ -42,6 +42,12 @@ module.exports.createFences = catchasync(async function (req, res, next) {
       updatedAt: data.updatedAt,
     };
 
+    // socket code start
+    const io = req.app.get("socketio");
+    io.to(req.params.id).emit("createfences", {
+      document,
+    });
+
     res.status(201).json({
       document,
     });

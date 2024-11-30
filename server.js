@@ -38,8 +38,12 @@ io.on("connection", (socket) => {
 
     userGroups.forEach((group) => {
       socket.join(group._id);
-      console.log(`User ${userId} joined group: ${group._id}`);
     });
+  });
+
+  // Create fences
+  socket.on("joinFencesWithGroups", async (groupId) => {
+    socket.join(groupId);
   });
 
   socket.on("disconnect", () => {
