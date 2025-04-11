@@ -162,6 +162,8 @@ const updateUser = catchAsync(async (req, res, next) => {
         filteredBody.status.location_sharing;
     if (filteredBody.status.isMoving !== undefined)
       updateFields["status.isMoving"] = filteredBody.status.isMoving;
+    if (filteredBody.status.movingStatus !== undefined)
+      updateFields["status.movingStatus"] = filteredBody.status.movingStatus;
     if (filteredBody.status.speed !== undefined)
       updateFields["status.speed"] = filteredBody.status.speed;
 
