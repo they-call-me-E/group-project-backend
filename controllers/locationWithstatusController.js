@@ -59,6 +59,12 @@ module.exports.updateLocationWithStatus = catchAsync(async (req, res, next) => {
   ) {
     updateFields["status.isMoving"] = req.body.status.isMoving;
   }
+  if (
+    req.body.status?.movingStatus !== undefined &&
+    req.body.status.movingStatus !== null
+  ) {
+    updateFields["status.movingStatus"] = req.body.status.movingStatus;
+  }
   if (req.body.status?.speed !== undefined && req.body.status.speed !== null) {
     updateFields["status.speed"] = req.body.status.speed;
   }
