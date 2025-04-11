@@ -36,6 +36,7 @@ module.exports.userResponse = (user) => {
     status: {
       location_sharing: user?.status?.location_sharing,
       isMoving: user?.status?.isMoving,
+      movingStatus: user?.status?.movingStatus,
       speed: user?.status?.speed,
       device: {
         screen: user?.status?.device.screen,
@@ -74,6 +75,7 @@ const userResponseNew = (user) => {
     status: {
       location_sharing: user?.status?.location_sharing,
       isMoving: user?.status?.isMoving,
+      movingStatus: user?.status?.movingStatus,
       speed: user?.status?.speed,
       device: {
         screen: user?.status?.device.screen,
