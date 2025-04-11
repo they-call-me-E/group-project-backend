@@ -44,7 +44,7 @@ app.use(
 // });
 
 // Apply the rate limiter to all requests
-app.use(limiter);
+// app.use(limiter);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
