@@ -76,6 +76,9 @@ const userSchema = new mongoose.Schema(
       isMoving: {
         type: Boolean,
       },
+      movingStatus: {
+        type: String,
+      },
       speed: {
         type: Number,
       },
