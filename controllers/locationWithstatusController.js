@@ -3,6 +3,7 @@ const AppError = require("./../utils/apperror");
 const { User } = require("../models/user");
 const { Group } = require("../models/group");
 const { userWithPresignedAvatarUrl } = require("../utils/userResponse");
+const { Avatar } = require("./../models/avatar");
 
 module.exports.updateLocationWithStatus = catchAsync(async (req, res, next) => {
   // Check existing user
@@ -119,7 +120,13 @@ module.exports.updateLocationWithStatus = catchAsync(async (req, res, next) => {
     members: { $in: [updatedUser._id] },
   });
 
-  const userInfo = await userWithPresignedAvatarUrl(updatedUser);
+  // const avatarInfo = await Avatar.findOne({ ownerId: updatedUser._id });
+  const avatarInfo = await Avatar.findOne({ ownerID: updatedUser._id });
+
+  const userInfo = await userWithPresignedAvatarUrl(
+    updatedUser,
+    avatarInfo?.avatar
+  );
 
   userGroups.forEach((group) => {
     io.to(group._id).emit("userLocationUpdated", {
