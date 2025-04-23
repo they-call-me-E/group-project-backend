@@ -10,6 +10,7 @@ const fs = require("fs");
 const path = require("path");
 const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { BUCKET_NAME, s3 } = require("./../utils/awsS3");
+const { Avatar } = require("./../models/avatar");
 
 // Update user photo information code start
 
@@ -194,7 +195,20 @@ const updateUser = catchAsync(async (req, res, next) => {
       runValidators: true,
     }
   );
-  const userInfo = await userWithPresignedAvatarUrl(updatedUser);
+
+  // const avatarInfo = await Avatar.findOne({ ownerID: updatedUser._id });
+
+  const userInfo = await userWithPresignedAvatarUrl(
+    updatedUser,
+    // avatarInfo?.avatar
+    null
+  );
+
+  // save avatar in database
+  if (userInfo) {
+    await Avatar.deleteOne({ ownerID: userInfo.uuid });
+    await Avatar.create({ avatar: userInfo.avatar, ownerID: userInfo.uuid });
+  }
 
   res.status(200).json({
     user: userInfo,
@@ -243,6 +257,24 @@ const deleteUser = catchAsync(async (req, res, next) => {
   });
 });
 
+const usersWithUrls = async (users) => {
+  const userIds = users.map((user) => user._id);
+
+  const avatarInfos = await Avatar.find({ ownerID: { $in: userIds } });
+
+  const avatarMap = new Map();
+  avatarInfos.forEach((avatar) => {
+    avatarMap.set(avatar.ownerID.toString(), avatar.avatar);
+  });
+
+  const usersWithUrls = users.map(async (user) => {
+    const avatarKey = avatarMap.get(user._id.toString());
+    return await userWithPresignedAvatarUrl(user, avatarKey);
+  });
+
+  return Promise.all(usersWithUrls);
+};
+
 // Read all users information
 const getAllUsers = catchAsync(async (req, res, next) => {
   const users = await User.find({});
@@ -258,26 +290,33 @@ const getAllUsers = catchAsync(async (req, res, next) => {
   // );
 
   // return res.status(200).json({ users: usersWithPresignedUrls });
-  const usersWithUrls = await Promise.all(
-    users.map(async (user) => {
-      return await userWithPresignedAvatarUrl(user);
-    })
-  );
+  // const usersWithUrls = await Promise.all(
+  //   users.map(async (user) => {
+  //     const avatarInfo = await Avatar.findOne({ ownerID: updatedUser._id });
+
+  //     return await userWithPresignedAvatarUrl(user, avatarInfo?.avatar);
+  //   })
+  // );
+
+  const result = await usersWithUrls(users);
 
   res.status(200).json({
-    users: usersWithUrls,
+    users: result,
   });
 });
 
 // Read single user information
 const getUser = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.params.id);
+
   let avatar = "";
   if (!user) {
     return next(new AppError("No User found with that Id", 404));
   }
 
-  const userInfo = await userWithPresignedAvatarUrl(user);
+  const avatarInfo = await Avatar.findOne({ ownerID: user._id });
+
+  const userInfo = await userWithPresignedAvatarUrl(user, avatarInfo?.avatar);
 
   res.status(200).json({
     user: userInfo,
