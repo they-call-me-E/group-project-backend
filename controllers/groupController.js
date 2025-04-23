@@ -3,6 +3,7 @@ const { Group } = require("../models/group");
 const { User } = require("../models/user");
 const AppError = require("./../utils/apperror");
 const { userWithPresignedAvatarUrl } = require("./../utils/userResponse");
+const { Avatar } = require("./../models/avatar");
 
 //create a group
 module.exports.createGroup = catchasync(async function (req, res, next) {
@@ -57,6 +58,44 @@ module.exports.getAllgroups = catchasync(async function (req, res, next) {
     document,
   });
 });
+const handleAdminList = async (groupAdmin) => {
+  const adminIds = groupAdmin.map((admin) => admin._id);
+
+  const avatarInfos = await Avatar.find({ ownerID: { $in: adminIds } });
+
+  const avatarMap = new Map();
+  avatarInfos.forEach((avatar) => {
+    avatarMap.set(avatar.ownerID.toString(), avatar.avatar);
+  });
+
+  const adminList = await Promise.all(
+    groupAdmin.map(async (user) => {
+      const avatarKey = avatarMap.get(user._id.toString());
+      return await userWithPresignedAvatarUrl(user, avatarKey);
+    })
+  );
+
+  return adminList;
+};
+const processMembers = async (members) => {
+  const memberIds = members.map((member) => member._id);
+
+  const avatarInfos = await Avatar.find({ ownerID: { $in: memberIds } });
+
+  const avatarMap = new Map();
+  avatarInfos.forEach((avatar) => {
+    avatarMap.set(avatar.ownerID.toString(), avatar.avatar);
+  });
+
+  const processedMembers = await Promise.all(
+    members.map(async (user) => {
+      const avatarKey = avatarMap.get(user._id.toString());
+      return await userWithPresignedAvatarUrl(user, avatarKey);
+    })
+  );
+
+  return processedMembers;
+};
 
 // read single group information
 
@@ -81,20 +120,12 @@ module.exports.getSingleGroup = catchasync(async function (req, res, next) {
     uuid: data._id,
     name: data.name,
     createdAt: data.createdAt,
-    adminList: await Promise.all(
-      data.groupAdmin.map(async (user) => {
-        return await userWithPresignedAvatarUrl(user);
-      })
-    ),
+    adminList: await handleAdminList(data.groupAdmin),
 
     // adminList: data.groupAdmin.map((item) => {
     //   return userResponse(item);
     // }),
-    members: await Promise.all(
-      data.members.map(async (user) => {
-        return await userWithPresignedAvatarUrl(user);
-      })
-    ),
+    members: await processMembers(data.members),
     // members: data.members.map((item) => {
     //   return userResponse(item);
     // }),
@@ -139,25 +170,19 @@ module.exports.getAllGroupDataWithMembers = catchasync(async function (
     return next(new AppError("Access Denied", 403));
   }
 
+  const avatarInfo = await Avatar.findOne({ ownerID: data.ownerID });
+
   const document = {
     uuid: data._id,
     name: data.name,
-    ownerID: await userWithPresignedAvatarUrl(data.ownerID),
+    ownerID: await userWithPresignedAvatarUrl(data.ownerID, avatarInfo?.avatar),
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
-    adminList: await Promise.all(
-      data.groupAdmin.map(async (user) => {
-        return await userWithPresignedAvatarUrl(user);
-      })
-    ),
+    adminList: await handleAdminList(data.groupAdmin),
     // adminList: data.groupAdmin.map((item) => {
     //   return userResponse(item);
     // }),
-    members: await Promise.all(
-      data.members.map(async (user) => {
-        return await userWithPresignedAvatarUrl(user);
-      })
-    ),
+    members: await processMembers(data.members),
     // members: data.members.map((item) => {
     //   return userResponse(item);
     // }),
@@ -234,26 +259,22 @@ module.exports.addMembers = catchasync(async function (req, res, next) {
       new: true,
       runValidators: true,
     });
+    const avatarInfo = await Avatar.findOne({ ownerID: data.ownerID });
 
     const document = {
       uuid: data._id,
       name: data.name,
-      ownerID: await userWithPresignedAvatarUrl(data.ownerID),
+      ownerID: await userWithPresignedAvatarUrl(
+        data.ownerID,
+        avatarInfo?.avatar
+      ),
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
-      adminList: await Promise.all(
-        data.groupAdmin.map(async (user) => {
-          return await userWithPresignedAvatarUrl(user);
-        })
-      ),
+      adminList: await handleAdminList(data.groupAdmin),
       // adminList: data.groupAdmin.map((item) => {
       //   return userResponse(item);
       // }),
-      members: await Promise.all(
-        data.members.map(async (user) => {
-          return await userWithPresignedAvatarUrl(user);
-        })
-      ),
+      members: await processMembers(data.members),
       // members: data.members.map((item) => {
       //   return userResponse(item);
       // }),
@@ -324,19 +345,11 @@ module.exports.getAllMembers = catchasync(async function (req, res, next) {
   // updated code end
 
   const document = {
-    members: await Promise.all(
-      data.members.map(async (user) => {
-        return await userWithPresignedAvatarUrl(user);
-      })
-    ),
+    members: await processMembers(data.members),
     // members: data.members.map((item) => {
     //   return userResponse(item);
     // }),
-    admins: await Promise.all(
-      data.groupAdmin.map(async (user) => {
-        return await userWithPresignedAvatarUrl(user);
-      })
-    ),
+    admins: await handleAdminList(data.groupAdmin),
 
     // admins: data.groupAdmin.map((item) => {
     //   return userResponse(item);
@@ -427,25 +440,22 @@ module.exports.addAdmin = catchasync(async function (req, res, next) {
           runValidators: true,
         });
 
+        const avatarInfo = await Avatar.findOne({ ownerID: data.ownerID });
+
         const document = {
           uuid: data._id,
           name: data.name,
-          ownerID: await userWithPresignedAvatarUrl(data.ownerID),
+          ownerID: await userWithPresignedAvatarUrl(
+            data.ownerID,
+            avatarInfo?.avatar
+          ),
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
-          adminList: await Promise.all(
-            data.groupAdmin.map(async (user) => {
-              return await userWithPresignedAvatarUrl(user);
-            })
-          ),
+          adminList: await handleAdminList(data.groupAdmin),
           // adminList: data.groupAdmin.map((item) => {
           //   return userResponse(item);
           // }),
-          members: await Promise.all(
-            data.members.map(async (user) => {
-              return await userWithPresignedAvatarUrl(user);
-            })
-          ),
+          members: await processMembers(data.members),
           // members: data.members.map((item) => {
           //   return userResponse(item);
           // }),
@@ -531,26 +541,21 @@ module.exports.removeAdmin = catchasync(async function (req, res, next) {
       new: true,
       runValidators: true,
     });
-
+    const avatarInfo = await Avatar.findOne({ ownerID: data.ownerID });
     const document = {
       uuid: data._id,
       name: data.name,
-      ownerID: await userWithPresignedAvatarUrl(data.ownerID),
+      ownerID: await userWithPresignedAvatarUrl(
+        data.ownerID,
+        avatarInfo?.avatar
+      ),
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
-      adminList: await Promise.all(
-        data.groupAdmin.map(async (user) => {
-          return await userWithPresignedAvatarUrl(user);
-        })
-      ),
+      adminList: await handleAdminList(data.groupAdmin),
       // adminList: data.groupAdmin.map((item) => {
       //   return userResponse(item);
       // }),
-      members: await Promise.all(
-        data.members.map(async (user) => {
-          return await userWithPresignedAvatarUrl(user);
-        })
-      ),
+      members: await processMembers(data.members),
       // members: data.members.map((item) => {
       //   return userResponse(item);
       // }),
@@ -627,26 +632,21 @@ module.exports.removeMembers = catchasync(async function (req, res, next) {
       new: true,
       runValidators: true,
     });
-
+    const avatarInfo = await Avatar.findOne({ ownerID: data.ownerID });
     const document = {
       uuid: data._id,
       name: data.name,
-      ownerID: await userWithPresignedAvatarUrl(data.ownerID),
+      ownerID: await userWithPresignedAvatarUrl(
+        data.ownerID,
+        avatarInfo?.avatar
+      ),
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
-      adminList: await Promise.all(
-        data.groupAdmin.map(async (user) => {
-          return await userWithPresignedAvatarUrl(user);
-        })
-      ),
+      adminList: await handleAdminList(data.groupAdmin),
       // adminList: data.groupAdmin.map((item) => {
       //   return userResponse(item);
       // }),
-      members: await Promise.all(
-        data.members.map(async (user) => {
-          return await userWithPresignedAvatarUrl(user);
-        })
-      ),
+      members: await processMembers(data.members),
       // members: data.members.map((item) => {
       //   return userResponse(item);
       // }),
@@ -728,25 +728,21 @@ module.exports.leaveMembers = catchasync(async function (req, res, next) {
       new: true,
       runValidators: true,
     });
+    const avatarInfo = await Avatar.findOne({ ownerID: data.ownerID });
     const document = {
       uuid: data._id,
       name: data.name,
-      ownerID: await userWithPresignedAvatarUrl(data.ownerID),
+      ownerID: await userWithPresignedAvatarUrl(
+        data.ownerID,
+        avatarInfo?.avatar
+      ),
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
-      adminList: await Promise.all(
-        data.groupAdmin.map(async (user) => {
-          return await userWithPresignedAvatarUrl(user);
-        })
-      ),
+      adminList: await handleAdminList(data.groupAdmin),
       // adminList: data.groupAdmin.map((item) => {
       //   return userResponse(item);
       // }),
-      members: await Promise.all(
-        data.members.map(async (user) => {
-          return await userWithPresignedAvatarUrl(user);
-        })
-      ),
+      members: await processMembers(data.members),
       // members: data.members.map((item) => {
       //   return userResponse(item);
       // }),
@@ -779,26 +775,22 @@ module.exports.leaveMembers = catchasync(async function (req, res, next) {
       new: true,
       runValidators: true,
     });
+    const avatarInfo = await Avatar.findOne({ ownerID: data.ownerID });
 
     const document = {
       uuid: data._id,
       name: data.name,
-      ownerID: await userWithPresignedAvatarUrl(data.ownerID),
+      ownerID: await userWithPresignedAvatarUrl(
+        data.ownerID,
+        avatarInfo?.avatar
+      ),
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
-      adminList: await Promise.all(
-        data.groupAdmin.map(async (user) => {
-          return await userWithPresignedAvatarUrl(user);
-        })
-      ),
+      adminList: await handleAdminList(data.groupAdmin),
       // adminList: data.groupAdmin.map((item) => {
       //   return userResponse(item);
       // }),
-      members: await Promise.all(
-        data.members.map(async (user) => {
-          return await userWithPresignedAvatarUrl(user);
-        })
-      ),
+      members: await processMembers(data.members),
       // members: data.members.map((item) => {
       //   return userResponse(item);
       // }),
@@ -841,26 +833,21 @@ module.exports.updateGroup = catchasync(async (req, res, next) => {
       new: true,
       runValidators: true,
     });
-
+    const avatarInfo = await Avatar.findOne({ ownerID: data.ownerID });
     const document = {
       uuid: data._id,
       name: data.name,
-      ownerID: await userWithPresignedAvatarUrl(data.ownerID),
+      ownerID: await userWithPresignedAvatarUrl(
+        data.ownerID,
+        avatarInfo?.avatar
+      ),
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
-      adminList: await Promise.all(
-        data.groupAdmin.map(async (user) => {
-          return await userWithPresignedAvatarUrl(user);
-        })
-      ),
+      adminList: await handleAdminList(data.groupAdmin),
       // adminList: data.groupAdmin.map((item) => {
       //   return userResponse(item);
       // }),
-      members: await Promise.all(
-        data.members.map(async (user) => {
-          return await userWithPresignedAvatarUrl(user);
-        })
-      ),
+      members: await processMembers(data.members),
       // members: data.members.map((item) => {
       //   return userResponse(item);
       // }),
@@ -891,11 +878,7 @@ module.exports.getAllAdmins = catchasync(async function (req, res, next) {
   }
 
   const document = {
-    adminList: await Promise.all(
-      data.groupAdmin.map(async (user) => {
-        return await userWithPresignedAvatarUrl(user);
-      })
-    ),
+    adminList: await handleAdminList(data.groupAdmin),
     // adminList: data.groupAdmin.map((item) => {
     //   return userResponse(item);
     // }),
