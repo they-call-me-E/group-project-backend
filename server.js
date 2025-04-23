@@ -8,6 +8,10 @@ dotenv.config({
   path: "./.env",
 });
 
+const cron = require("node-cron");
+const { Avatar } = require("./models/avatar");
+const { userWithPresignedAvatarUrl } = require("./utils/userResponse");
+
 const DB = process.env.DATABASE.replace(
   "<password>",
   process.env.DATABASE_PASSWORD
@@ -22,6 +26,52 @@ mongoose
     console.log(err);
   });
 const app = require("./app");
+// cron job
+
+cron.schedule("0 */12 * * *", async () => {
+  try {
+    const oldAvatarInfo = await Avatar.find({}).populate({
+      path: "ownerID",
+      select: "-__v -password",
+    });
+
+    if (!oldAvatarInfo.length) {
+      console.log("No avatars to update.");
+      return;
+    }
+
+    const bulkOperations = [];
+
+    for (const avatar of oldAvatarInfo) {
+      const userInformation = await userWithPresignedAvatarUrl(
+        avatar?.ownerID,
+        null
+      );
+
+      if (userInformation?.avatar) {
+        bulkOperations.push({
+          updateOne: {
+            filter: { _id: avatar._id },
+            update: { $set: { avatar: userInformation.avatar } },
+          },
+        });
+      }
+    }
+
+    if (bulkOperations.length) {
+      const result = await Avatar.bulkWrite(bulkOperations);
+      console.log(`${result.modifiedCount} avatars updated.`);
+    } else {
+      console.log("No avatars required updates.");
+    }
+
+    console.log("Cron job finished.");
+  } catch (error) {
+    console.error("Cron Job Related Error:", error);
+  }
+});
+
+// socket connection
 
 const server = http.createServer(app);
 const io = new Server(server, {
