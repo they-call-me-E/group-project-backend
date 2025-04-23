@@ -11,9 +11,12 @@ const getPresignedUrl = async (key) => {
   });
 
   try {
-    const presignedUrl = await getSignedUrl(s3, command, { expiresIn: 43200 }); // 12 hours
+    const presignedUrl = await getSignedUrl(s3, command, { expiresIn: 86400 }); // 12 hours
+
     return presignedUrl;
   } catch (err) {
+    console.log("err message");
+    console.log(err);
     // throw new AppError("Failed to generate presigned URL", 500);
     return null;
   }
@@ -98,9 +101,11 @@ const userResponseNew = (user) => {
   };
 };
 
-module.exports.userWithPresignedAvatarUrl = async (user) => {
+module.exports.userWithPresignedAvatarUrl = async (user, imageUrl) => {
   let avatarUrl;
-  if (user?.avatar) {
+  if (imageUrl) {
+    user["avatar"] = imageUrl;
+  } else if (user?.avatar) {
     avatarUrl = await getPresignedUrl(`users/${user.avatar}`);
   }
   if (avatarUrl) {
