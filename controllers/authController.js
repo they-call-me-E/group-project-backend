@@ -6,6 +6,7 @@ const { userWithPresignedAvatarUrl } = require("./../utils/userResponse");
 const AppError = require("./../utils/apperror");
 const crypto = require("crypto");
 const Email = require("./../utils/email");
+// const { Avatar } = require("./../models/avatar");
 
 const signToken = ({ _id, role, name, email }) => {
   return jwt.sign(
@@ -21,7 +22,9 @@ const createSendToken = async (user, statusCode, res) => {
   const token = signToken(user);
   user.password = undefined;
 
-  const userInfo = await userWithPresignedAvatarUrl(user);
+  // const oldAvatarInfo = await Avatar.findOne({ownerID: user});
+
+  const userInfo = await userWithPresignedAvatarUrl(user, null);
 
   res.status(statusCode).json({
     token,
@@ -37,13 +40,17 @@ module.exports.signup = catchAsync(async (req, res, next) => {
   }
   const newUser = await User.create(req.body);
   // const user = userResponse(newUser);
-  const user = await userWithPresignedAvatarUrl(newUser);
+  const user = await userWithPresignedAvatarUrl(newUser, null);
   res.status(200).json({
     user,
   });
 });
 
 module.exports.signin = catchAsync(async (req, res, next) => {
+  // remove all avatars from databases
+
+  // const result = await Avatar.deleteMany({});
+
   const { email, password } = req.body;
   //1)Check if email and password is Not exist
   if (!email || !password) {
