@@ -28,7 +28,7 @@ mongoose
 const app = require("./app");
 // cron job
 
-cron.schedule("*/5 * * * *", async () => {
+cron.schedule("0 */5 * * *", async () => {
   try {
     const oldAvatarInfo = await Avatar.find({}).populate({
       path: "ownerID",
