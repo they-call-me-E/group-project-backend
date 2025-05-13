@@ -50,7 +50,7 @@ module.exports.getAllgroups = catchasync(async function (req, res, next) {
       uuid: item._id,
       name: item.name,
       createdAt: item.createdAt,
-      merberCount: item.members.length,
+      memberCount: item.members.length,
     };
   });
 
