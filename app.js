@@ -13,6 +13,7 @@ const groupRouter = require("./routes/grouproutes");
 const fencesRouter = require("./routes/fencesroutes");
 const locationWithstatusRouter = require("./routes/locationWithstatusroutes");
 const pingRouter = require("./routes/pingRoutes");
+const statsRouter = require("./routes/statsRouter");
 
 const app = express();
 
@@ -64,6 +65,8 @@ app.use("/api/groups", groupRouter);
 app.use("/api/group", fencesRouter);
 app.use("/api/location_with_status", locationWithstatusRouter);
 app.use("/api/ping", pingRouter);
+// Mount the stats router
+app.use("/api", statsRouter);
 
 app.all("*", (req, res, next) => {
   return next(
