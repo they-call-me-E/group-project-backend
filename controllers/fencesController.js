@@ -339,7 +339,11 @@ module.exports.getAllFences = catchasync(async function (req, res, next) {
     longitude: fence.longitude,
     radius: fence.radius,
     groupCount: fence.groups.length,
-    groups: fence.groups.map(group => group._id),
+    groups: fence.groups.map(group => ({
+      uuid: group._id,
+      name: group.name,
+      memberCount: group.members.length
+    })),
     createdAt: fence.createdAt,
     updatedAt: fence.updatedAt
   }));
