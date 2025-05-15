@@ -14,6 +14,7 @@ const fencesRouter = require("./routes/fencesroutes");
 const locationWithstatusRouter = require("./routes/locationWithstatusroutes");
 const pingRouter = require("./routes/pingRoutes");
 const statsRouter = require("./routes/statsRouter");
+const fencesRoutes = require("./routes/fencesRoutes"); // new routes for api/fences
 
 const app = express();
 
@@ -67,7 +68,8 @@ app.use("/api/location_with_status", locationWithstatusRouter);
 app.use("/api/ping", pingRouter);
 // Mount the stats router
 app.use("/api", statsRouter);
-
+//New api/fences router
+app.use("/api/fences", fencesRoutes);
 app.all("*", (req, res, next) => {
   return next(
     new AppError(`can not findout this url: ${req.originalUrl}`, 404)
