@@ -329,3 +329,22 @@ module.exports.deleteFences = catchasync(async (req, res, next) => {
     return next(new AppError("You do not have permission this action", 403));
   }
 });
+
+module.exports.getAllFences = catchasync(async function (req, res, next) {
+  const fences = await Fences.find({});
+  const result = fences.map(fence => ({
+    uuid: fence._id,
+    name: fence.name,
+    latitude: fence.latitude,
+    longitude: fence.longitude,
+    radius: fence.radius,
+    groupCount: fence.groups.length,
+    groups: fence.groups.map(group => group._id),
+    createdAt: fence.createdAt,
+    updatedAt: fence.updatedAt
+  }));
+
+  res.status(200).json({
+    fences: result,
+  });
+});
