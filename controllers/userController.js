@@ -371,7 +371,15 @@ const addGeofence = catchAsync(async (req, res, next) => {
   user.geodata.push(newGeofenceEntry);
 
   // Save the updated user document
-  await user.save();
+  // await user.save();
+  await User.findByIdAndUpdate(
+    user._id,
+    { geodata: user.geodata },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
 
   res.status(200).json({
     message: "geodata successfully added",
@@ -413,7 +421,15 @@ const removeGeofence = catchAsync(async (req, res, next) => {
   user.geodata.splice(geofenceIndex, 1);
 
   // Save the updated user document
-  await user.save();
+  // await user.save();
+  await User.findByIdAndUpdate(
+    user._id,
+    { geodata: user.geodata },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
 
   res.status(200).json({
     message: "geofence successfully removed",
