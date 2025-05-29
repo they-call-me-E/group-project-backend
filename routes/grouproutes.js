@@ -1,6 +1,7 @@
 const express = require("express");
 
 const { protect } = require("../controllers/authController");
+const { isSuperUserOnly } = require("../middleware/isSuperUserOnly");
 const {
   createGroup,
   getAllgroups,
@@ -34,22 +35,24 @@ const router = express.Router();
 
 //Protect All routes after this middleware
 router.use(protect);
-router.get("/:groupId/members/:userId", getAllGroupDataWithMembers);
-router.get("/:id/members", getAllMembers);
-router.get("/:id/admins", getAllAdmins);
-router.get("/", getAllgroups);
-router.get("/:id", getSingleGroup);
-router.post("/create", createGroup);
-router.patch("/:id/add/members", addMembers);
-router.patch("/:id/add/admin", addAdmin);
-router.patch("/:id/remove/admin", removeAdmin);
-router.patch("/:id/remove/members", removeMembers);
-router.delete("/:id", deleteGroup);
-router.patch("/:id", updateGroup);
-router.patch("/leave/:id", leaveMembers);
-router.get("/:id/fences", getGroupFences);
-router.get("/:groupId/fences/:fenceId", getSingleGroupFences);
-router.post("/:groupId/invite/generate", generateInviteCode);
-router.post("/invite/join", joinGroupWithInvite);
+router.use(isSuperUserOnly);
+
+router.get("/:groupId/members/:userId", getAllGroupDataWithMembers); // superuser with validation feature done
+router.get("/:id/members", getAllMembers); // superuser with validation feature done
+router.get("/:id/admins", getAllAdmins); // superuser with validation feature done
+router.get("/", getAllgroups); // waiting for response
+router.get("/:id", getSingleGroup); // superuser with validation feature done
+router.post("/create", createGroup); // superuser with all validation feature done
+router.patch("/:id/add/members", addMembers); //superuser with all validation feature done
+router.patch("/:id/add/admin", addAdmin); // superuser with all validation feature done
+router.patch("/:id/remove/admin", removeAdmin); // superuser with all validation feature done
+router.patch("/:id/remove/members", removeMembers); // superuser with all validation feature done
+router.delete("/:id", deleteGroup); // all validation feature done
+router.patch("/:id", updateGroup); // all validation feature done
+router.patch("/leave/:id", leaveMembers); // processing and all validation feature done
+router.get("/:id/fences", getGroupFences); // validation feature done
+router.get("/:groupId/fences/:fenceId", getSingleGroupFences); // validation feature done
+router.post("/:groupId/invite/generate", generateInviteCode); // all validation feature done
+router.post("/invite/join", joinGroupWithInvite); // all validation feature done
 
 module.exports = router;

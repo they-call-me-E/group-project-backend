@@ -1,8 +1,17 @@
 const catchasync = require("../utils/catchasync");
-const { Fences } = require("../models/fences");
+const {
+  Fences,
+  fencesPostValidationSchema,
+  fencesPatchValidationSchema,
+} = require("../models/fences");
 const { User } = require("../models/user");
 const AppError = require("./../utils/apperror");
 const { Group } = require("./../models/group");
+
+const {
+  IdParamsValidationSchema,
+  GroupIdWithFenceIdParamsValidationSchema,
+} = require("./../utils/joiValidation");
 
 function isEmptyObjectCheck(obj) {
   for (let key in obj) {
@@ -12,6 +21,21 @@ function isEmptyObjectCheck(obj) {
 }
 //create a fences
 module.exports.createFences = catchasync(async function (req, res, next) {
+  // Joi validation start
+  const { error: paramsError } = IdParamsValidationSchema.validate(req.params);
+
+  if (paramsError) {
+    return next(new AppError(paramsError.details[0].message, 400));
+  }
+  const { error: requestBodyError } = fencesPostValidationSchema.validate(
+    req.body
+  );
+
+  if (requestBodyError) {
+    return next(new AppError(requestBodyError.details[0].message, 400));
+  }
+  // Joi validation end
+
   const existing_group = await Group.findById(req.params.id);
   if (!existing_group) {
     return next(new AppError("No group found with that GroupId", 404));
@@ -58,6 +82,12 @@ module.exports.createFences = catchasync(async function (req, res, next) {
 
 // group fences array
 module.exports.getGroupFences = catchasync(async function (req, res, next) {
+  // Joi validation
+  const { error } = IdParamsValidationSchema.validate(req.params);
+
+  if (error) {
+    return next(new AppError(error.details[0].message, 400));
+  }
   let filterFencesData = [];
   let groupMembersArr = [];
   const existing_group = await Group.findById(req.params.id);
@@ -147,6 +177,14 @@ module.exports.getSingleGroupFences = catchasync(async function (
   res,
   next
 ) {
+  // Joi validation
+  const { error } = GroupIdWithFenceIdParamsValidationSchema.validate(
+    req.params
+  );
+
+  if (error) {
+    return next(new AppError(error.details[0].message, 400));
+  }
   let filterFencesData = {};
   let groupMembersArr = [];
   const allFencesData = await Fences.find({});
@@ -238,6 +276,23 @@ module.exports.getSingleGroupFences = catchasync(async function (
 // update fences functionality
 
 module.exports.updateFences = catchasync(async (req, res, next) => {
+  // Joi validation start
+  const { error } = GroupIdWithFenceIdParamsValidationSchema.validate(
+    req.params
+  );
+
+  if (error) {
+    return next(new AppError(error.details[0].message, 400));
+  }
+  const { error: requestBodyError } = fencesPatchValidationSchema.validate(
+    req.body
+  );
+
+  if (requestBodyError) {
+    return next(new AppError(requestBodyError.details[0].message, 400));
+  }
+  // Joi validation end
+
   const existing_fences = await Fences.findById(req.params.fenceId);
   if (!existing_fences) {
     return next(new AppError("No Document found with that Fence Id", 404));
@@ -295,6 +350,15 @@ module.exports.updateFences = catchasync(async (req, res, next) => {
 // delete fences functionality
 
 module.exports.deleteFences = catchasync(async (req, res, next) => {
+  // Joi validation
+  const { error } = GroupIdWithFenceIdParamsValidationSchema.validate(
+    req.params
+  );
+
+  if (error) {
+    return next(new AppError(error.details[0].message, 400));
+  }
+
   const existing_fences = await Fences.findById(req.params.fenceId);
   if (!existing_fences) {
     return next(new AppError("No Document found with that Fence Id", 404));
@@ -332,20 +396,20 @@ module.exports.deleteFences = catchasync(async (req, res, next) => {
 
 module.exports.getAllFences = catchasync(async function (req, res, next) {
   const fences = await Fences.find({});
-  const result = fences.map(fence => ({
+  const result = fences.map((fence) => ({
     uuid: fence._id,
     name: fence.name,
     latitude: fence.latitude,
     longitude: fence.longitude,
     radius: fence.radius,
     groupCount: fence.groups.length,
-    groups: fence.groups.map(group => ({
+    groups: fence.groups.map((group) => ({
       uuid: group._id,
       name: group.name,
-      memberCount: group.members.length
+      memberCount: group.members.length,
     })),
     createdAt: fence.createdAt,
-    updatedAt: fence.updatedAt
+    updatedAt: fence.updatedAt,
   }));
 
   res.status(200).json({

@@ -3,12 +3,13 @@ const { convert } = require("html-to-text");
 const sgMail = require("@sendgrid/mail");
 
 module.exports = class Email {
-  constructor(user, url, baseUrl) {
+  constructor(user, url = null, baseUrl = null) {
     this.to = user.email;
     this.firstName = user.name.split(" ")[0];
     this.url = url;
     this.from = `${process.env.EMAIL_FROM}`;
     this.baseUrl = baseUrl;
+    this.otp = user?.otp ? user?.otp : "";
   }
 
   // Send the actual email start
@@ -16,11 +17,14 @@ module.exports = class Email {
     // 1) Render HTML based on a pug template
     const html = pug.renderFile(`${__dirname}/../views/email/${template}.pug`, {
       firstName: this.firstName,
-      front_end_url: `${this.baseUrl}/${
-        process.env.WEBSITE_RESET_PASSWORD_URL
-      }?token=${this.url.substring(this.url.lastIndexOf("/") + 1)}`,
+      front_end_url: this.baseUrl
+        ? `${this.baseUrl}/${
+            process.env.WEBSITE_RESET_PASSWORD_URL
+          }?token=${this.url.substring(this.url.lastIndexOf("/") + 1)}`
+        : "",
       subject,
-      url: this.url,
+      url: this.url || "",
+      otp: this.otp,
     });
 
     const mailOptions = {
@@ -44,5 +48,8 @@ module.exports = class Email {
       "passwordReset",
       "Your password reset token (valid for only 30 minutes)"
     );
+  }
+  async sendOtp() {
+    await this.send("otp", "Your OTP Code (Valid for 3 Minutes)");
   }
 };

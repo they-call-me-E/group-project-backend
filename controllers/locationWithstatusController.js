@@ -1,11 +1,27 @@
 const catchAsync = require("../utils/catchasync");
 const AppError = require("./../utils/apperror");
-const { User } = require("../models/user");
+const { User, userPatchValidationSchema } = require("../models/user");
 const { Group } = require("../models/group");
 const { userWithPresignedAvatarUrl } = require("../utils/userResponse");
 const { Avatar } = require("./../models/avatar");
+const { IdParamsValidationSchema } = require("./../utils/joiValidation");
 
 module.exports.updateLocationWithStatus = catchAsync(async (req, res, next) => {
+  // Joi validation
+  const { error: paramsError } = IdParamsValidationSchema.validate(req.params);
+
+  if (paramsError) {
+    return next(new AppError(paramsError.details[0].message, 400));
+  }
+  const { error: requestBodyError } = userPatchValidationSchema.validate(
+    req.body
+  );
+
+  if (requestBodyError) {
+    return next(new AppError(requestBodyError.details[0].message, 400));
+  }
+
+  // Joi validation end
   // Check existing user
   const existing_user = await User.findById(req.params.id);
 

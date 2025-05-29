@@ -1,4 +1,5 @@
 const express = require("express");
+const { verifyEmail } = require("./../middleware/verifyEmail");
 
 const {
   signup,
@@ -17,26 +18,32 @@ const {
   uploadUserPhoto,
   resizeUserPhoto,
 } = require("../controllers/userController");
+const {
+  signinLimiter,
+  forgotPasswordLimiter,
+  resetPasswordLimiter,
+} = require("./../utils/rateLimiters");
 
 // Mounting multiple router
 const router = express.Router();
 
-router.post("/signup", signup);
-router.post("/signin", signin);
-router.post("/forgotPassword", forgotPassword);
-router.patch("/resetPassword/:token", resetPassword);
+router.post("/signup", signup); // all validation done
+router.post("/signin", signinLimiter, signin); // all validation done
+router.post("/forgotPassword", forgotPasswordLimiter, forgotPassword); // all validation done
+router.patch("/resetPassword/:token", resetPasswordLimiter, resetPassword); // all validation done
+router.post("/verify-email", verifyEmail); // all validation done
 
 //Protect All routes after this middleware
 router.use(protect);
 
 // Geofence routes
 
-router.patch("/:id/geodata", addGeofence); // Add geofence entry
-router.delete("/:id/geodata", removeGeofence); // Remove geofence entry
+router.patch("/:id/geodata", addGeofence); // all validation done
+router.delete("/:id/geodata", removeGeofence); // all validation done
 
-router.patch("/:id", uploadUserPhoto, resizeUserPhoto, updateUser);
-router.delete("/:id", deleteUser);
+router.patch("/:id", uploadUserPhoto, resizeUserPhoto, updateUser); //  all validation done
+router.delete("/:id", deleteUser); // all validation done
 router.get("/", getAllUsers);
-router.get("/:id", getUser);
+router.get("/:id", getUser); // all validation done
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
+const Joi = require("joi");
 
 const groupSchema = new mongoose.Schema(
   {
@@ -73,5 +74,105 @@ groupSchema.pre(/^find/, function (next) {
   });
   next();
 });
+
+module.exports.GroupPostValidationSchema = (group) => {
+  const schema = Joi.object({
+    name: Joi.string().min(1).max(50).required().messages({
+      "string.empty": "Please provide a group name!",
+      "string.min": "Group name must be at least 1 character!",
+      "string.max": "Group name must not exceed 50 characters!",
+    }),
+    ownerID: Joi.string().required().messages({
+      "string.empty": "Owner ID is required!",
+    }),
+    groupAdmin: Joi.array()
+      .items(Joi.string().required())
+      .min(1)
+      .required()
+      .messages({
+        "array.min": "There must be at least one group admin!",
+      }),
+    members: Joi.array()
+      .items(Joi.string().required())
+      .min(1)
+      .required()
+      .messages({
+        "array.min": "There must be at least one member!",
+      }),
+    inviteMembersList: Joi.array().items(
+      Joi.object({
+        invite_code: Joi.string().required().messages({
+          "string.empty": "Invite code is required!",
+        }),
+        user_id: Joi.string().required().messages({
+          "string.empty": "User ID is required!",
+        }),
+        group_id: Joi.string().required().messages({
+          "string.empty": "Group ID is required!",
+        }),
+        expires_in: Joi.date(),
+        created_at: Joi.date(),
+      })
+    ),
+  });
+
+  return schema.validate(group);
+};
+module.exports.GroupPatchValidationSchema = (group) => {
+  const schema = Joi.object({
+    userId: Joi.string().guid({ version: "uuidv4" }).optional().messages({
+      "string.base": `userId must be a string.`,
+      "string.guid": `userId must be a valid UUID.`,
+      "any.required": `userId is required in the params.`,
+    }),
+    adminId: Joi.string().guid({ version: "uuidv4" }).optional().messages({
+      "string.base": `adminId must be a string.`,
+      "string.guid": `adminId must be a valid UUID.`,
+      "any.required": `adminId is required in the params.`,
+    }),
+
+    name: Joi.string().min(1).max(50).optional().messages({
+      "string.empty": "Please provide a group name!",
+      "string.min": "Group name must be at least 1 character!",
+      "string.max": "Group name must not exceed 50 characters!",
+    }),
+    ownerID: Joi.string().optional().messages({
+      "string.empty": "Owner ID is required!",
+    }),
+    groupAdmin: Joi.array()
+      .items(Joi.string().required())
+      .min(1)
+      .optional()
+      .messages({
+        "array.min": "There must be at least one group admin!",
+      }),
+    members: Joi.array()
+      .items(Joi.string().required())
+      .min(1)
+      .optional()
+      .messages({
+        "array.min": "There must be at least one member!",
+      }),
+    inviteMembersList: Joi.array()
+      .items(
+        Joi.object({
+          invite_code: Joi.string().optional().messages({
+            "string.empty": "Invite code is required!",
+          }),
+          user_id: Joi.string().optional().messages({
+            "string.empty": "User ID is required!",
+          }),
+          group_id: Joi.string().optional().messages({
+            "string.empty": "Group ID is required!",
+          }),
+          expires_in: Joi.date().optional(),
+          created_at: Joi.date().optional(),
+        })
+      )
+      .optional(),
+  });
+
+  return schema.validate(group);
+};
 
 module.exports.Group = mongoose.model("Group", groupSchema);

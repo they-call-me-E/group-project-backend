@@ -1,11 +1,23 @@
 const catchasync = require("../utils/catchasync");
 const AppError = require("../utils/apperror");
 const { Group } = require("../models/group");
-const { Invite } = require("./../models/invite");
+const { GroupIdParamsValidationSchema } = require("./../utils/joiValidation");
+
+const {
+  Invite,
+  invitePostValidationSchema,
+  invitePatchValidationSchema,
+} = require("./../models/invite");
 const { User } = require("../models/user");
 const crypto = require("crypto");
 
 module.exports.generateInviteCode = catchasync(async (req, res, next) => {
+  // Joi validation
+  const { error } = GroupIdParamsValidationSchema.validate(req.params);
+
+  if (error) {
+    return next(new AppError(error.details[0].message, 400));
+  }
   const existing_group = await Group.findById(req.params.groupId);
   if (!existing_group) {
     return next(new AppError("No Document found with that GroupId", 404));
@@ -50,12 +62,20 @@ module.exports.generateInviteCode = catchasync(async (req, res, next) => {
     // }
     // Generate random invite code
     const inviteCode = crypto.randomBytes(3).toString("hex").toUpperCase();
-    const document = await Invite.create({
+
+    // Joi validation
+    const body = {
       invite_code: inviteCode,
       created_at: Date.now(),
       group_id: req.params.groupId,
       // user_id: req.body.userId,
-    });
+    };
+    const { error } = invitePostValidationSchema(body);
+    if (error) {
+      return next(new AppError(error.details[0].message, 400));
+    }
+
+    const document = await Invite.create(body);
 
     res.status(201).json({
       document: {
@@ -70,6 +90,14 @@ module.exports.generateInviteCode = catchasync(async (req, res, next) => {
 
 // can use multiple user
 module.exports.joinGroupWithInvite = catchasync(async (req, res, next) => {
+  // Joi validation code start
+
+  const { error } = invitePatchValidationSchema(req.body);
+
+  if (error) {
+    return next(new AppError(error.details[0].message, 400));
+  }
+  // Joi validation code end
   const { invite_code } = req.body;
   const invite_doc = await Invite.findOne({
     // user_id: req.user._id,

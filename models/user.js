@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const validator = require("validator");
 const { v4: uuidv4 } = require("uuid");
 const crypto = require("crypto");
+const Joi = require("joi");
 
 const userSchema = new mongoose.Schema(
   {
@@ -128,8 +129,18 @@ const userSchema = new mongoose.Schema(
         },
       },
     ],
+    superuser: {
+      type: Boolean,
+      default: false,
+    },
     passwordResetToken: String,
     passwordResetExpires: Date,
+    sessions: {
+      mobile: { type: String, default: null },
+    },
+    isVerified: { type: Boolean, default: false },
+    otp: { type: String },
+    otpExpiry: { type: Date },
   },
   { timestamps: true }
 );
@@ -176,5 +187,214 @@ userSchema.methods.creatPasswordResetToken = function () {
   this.passwordResetExpires = Date.now() + 30 * 60 * 1000;
   return resetToken;
 };
+
+// Request data validation using joi
+module.exports.userPostValidationSchema = Joi.object({
+  _id: Joi.string().default(() => uuidv4()),
+  name: Joi.string().min(1).max(50).required().messages({
+    "string.base": "Name must be a string.",
+    "string.empty": "Name cannot be empty.",
+    "string.min": "Name must have at least 1 character.",
+    "string.max": "Name can have a maximum of 50 characters.",
+    "any.required": "Name is required.",
+  }),
+  email: Joi.string().email().lowercase().required().messages({
+    "string.email": "Please provide a valid email address.",
+    "any.required": "Email is required.",
+  }),
+  inviteGroupsList: Joi.array()
+    .items(
+      Joi.string()
+        .regex(/^[0-9a-fA-F]{24}$/)
+        .required()
+    )
+    .messages({
+      "array.base": "Invite groups must be an array.",
+      "string.pattern.base": "Each group ID must be a valid ObjectId.",
+    }),
+  phone: Joi.string().optional(),
+  relation: Joi.string().optional(),
+  avatar: Joi.string().optional(),
+  password: Joi.string().min(8).required().messages({
+    "string.min": "Password must be at least 8 characters long.",
+    "any.required": "Password is required.",
+  }),
+  passwordConfirm: Joi.string().valid(Joi.ref("password")).required().messages({
+    "any.only": "Passwords must match.",
+    "any.required": "Password confirmation is required.",
+  }),
+  location: Joi.object({
+    latitude: Joi.number().optional(),
+    longitude: Joi.number().optional(),
+    address: Joi.string().optional(),
+    timestamp: Joi.string().optional(),
+  }).optional(),
+  sessions: Joi.object({
+    mobile: Joi.string().allow(null).optional(),
+  }).optional(),
+  status: Joi.object({
+    location_sharing: Joi.boolean().optional(),
+    isMoving: Joi.boolean().optional(),
+    movingStatus: Joi.string().optional(),
+    speed: Joi.number().optional(),
+    device: Joi.object({
+      screen: Joi.boolean().optional(),
+      wifi: Joi.boolean().optional(),
+      battery_level: Joi.number().optional(),
+      charging: Joi.boolean().optional(),
+      currentApp: Joi.string().optional(),
+    }).optional(),
+  }).optional(),
+  geodata: Joi.array()
+    .items(
+      Joi.object({
+        _id: Joi.string().default(() => uuidv4()),
+        currentGeofenceId: Joi.string().required().messages({
+          "any.required": "Current geofence ID is required.",
+        }),
+        groupId: Joi.string().required().messages({
+          "any.required": "Group ID is required.",
+        }),
+        geofenceName: Joi.string().required().messages({
+          "any.required": "Geofence name is required.",
+        }),
+        enteredAt: Joi.date().allow(null),
+      })
+    )
+    .optional(),
+  superuser: Joi.boolean().default(false),
+  passwordResetToken: Joi.string().optional(),
+  passwordResetExpires: Joi.date().optional(),
+  isVerified: Joi.boolean().optional(),
+  otp: Joi.string()
+    .length(6)
+    .pattern(/^\d{6}$/)
+    .optional()
+    .messages({
+      "string.base": "OTP must be a string.",
+      "string.length": "OTP must be exactly 6 digits.",
+      "string.pattern.base": "OTP must contain only numbers.",
+      "any.required": "OTP is required.",
+    }),
+
+  otpExpiry: Joi.date().greater("now").optional().messages({
+    "date.base": "OTP expiry must be a valid date.",
+    "date.greater": "OTP expiry must be a future date.",
+    "any.required": "OTP expiry date is required.",
+  }),
+})
+  .required()
+  .messages({
+    "any.required": "Required information is missing.",
+  });
+
+module.exports.userPatchValidationSchema = Joi.object({
+  _id: Joi.string()
+    .default(() => uuidv4())
+    .optional(),
+
+  name: Joi.string().min(1).max(50).optional().messages({
+    "string.base": "Name must be a string.",
+    "string.empty": "Name cannot be empty.",
+    "string.min": "Name must have at least 1 character.",
+    "string.max": "Name can have a maximum of 50 characters.",
+  }),
+
+  email: Joi.string().email().lowercase().optional().messages({
+    "string.email": "Please provide a valid email address.",
+  }),
+
+  inviteGroupsList: Joi.array()
+    .items(
+      Joi.string()
+        .regex(/^[0-9a-fA-F]{24}$/)
+        .optional()
+    )
+    .optional()
+    .messages({
+      "array.base": "Invite groups must be an array.",
+      "string.pattern.base": "Each group ID must be a valid ObjectId.",
+    }),
+
+  phone: Joi.string().optional(),
+  relation: Joi.string().optional(),
+  avatar: Joi.string().optional(),
+
+  password: Joi.string().min(8).optional().messages({
+    "string.min": "Password must be at least 8 characters long.",
+  }),
+
+  passwordConfirm: Joi.string().valid(Joi.ref("password")).optional().messages({
+    "any.only": "Passwords must match.",
+  }),
+
+  location: Joi.object({
+    latitude: Joi.number().optional(),
+    longitude: Joi.number().optional(),
+    address: Joi.string().optional(),
+    timestamp: Joi.string().optional(),
+  }).optional(),
+  sessions: Joi.object({
+    mobile: Joi.string().allow(null).optional(),
+  }).optional(),
+  status: Joi.object({
+    location_sharing: Joi.boolean().optional(),
+    isMoving: Joi.boolean().optional(),
+    movingStatus: Joi.string().optional(),
+    speed: Joi.number().optional(),
+    device: Joi.object({
+      screen: Joi.boolean().optional(),
+      wifi: Joi.boolean().optional(),
+      battery_level: Joi.number().optional(),
+      charging: Joi.boolean().optional(),
+      currentApp: Joi.string().optional(),
+    }).optional(),
+  }).optional(),
+
+  geodata: Joi.array()
+    .items(
+      Joi.object({
+        _id: Joi.string()
+          .default(() => uuidv4())
+          .optional(),
+        currentGeofenceId: Joi.string().optional().messages({
+          "any.required": "Current geofence ID is required.",
+        }),
+        groupId: Joi.string().optional().messages({
+          "any.required": "Group ID is required.",
+        }),
+        geofenceName: Joi.string().optional().messages({
+          "any.required": "Geofence name is required.",
+        }),
+        enteredAt: Joi.date().allow(null).optional(),
+      })
+    )
+    .optional(),
+
+  superuser: Joi.boolean().optional(),
+  passwordResetToken: Joi.string().optional(),
+  passwordResetExpires: Joi.date().optional(),
+  isVerified: Joi.boolean().optional(),
+  otp: Joi.string()
+    .length(6)
+    .pattern(/^\d{6}$/)
+    .optional()
+    .messages({
+      "string.base": "OTP must be a string.",
+      "string.length": "OTP must be exactly 6 digits.",
+      "string.pattern.base": "OTP must contain only numbers.",
+      "any.required": "OTP is required.",
+    }),
+
+  otpExpiry: Joi.date().greater("now").optional().messages({
+    "date.base": "OTP expiry must be a valid date.",
+    "date.greater": "OTP expiry must be a future date.",
+    "any.required": "OTP expiry date is required.",
+  }),
+})
+  .optional()
+  .messages({
+    "any.required": "Required information is missing.",
+  });
 
 module.exports.User = mongoose.model("User", userSchema);

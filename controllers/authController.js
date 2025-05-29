@@ -1,44 +1,45 @@
 const catchAsync = require("../utils/catchasync");
-const { User } = require("../models/user");
+const {
+  User,
+  userPostValidationSchema,
+  userPatchValidationSchema,
+} = require("../models/user");
 const jwt = require("jsonwebtoken");
 const { promisify } = require("util");
 const { userWithPresignedAvatarUrl } = require("./../utils/userResponse");
 const AppError = require("./../utils/apperror");
 const crypto = require("crypto");
 const Email = require("./../utils/email");
-// const { Avatar } = require("./../models/avatar");
-
-const signToken = ({ _id, role, name, email }) => {
-  return jwt.sign(
-    { id: _id, role: role, name: name, email: email },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: process.env.JWT_EXPIRES_IN,
-    }
-  );
-};
-
-const createSendToken = async (user, statusCode, res) => {
-  const token = signToken(user);
-  user.password = undefined;
-
-  // const oldAvatarInfo = await Avatar.findOne({ownerID: user});
-
-  const userInfo = await userWithPresignedAvatarUrl(user, null);
-
-  res.status(statusCode).json({
-    token,
-    user: userInfo,
-  });
-};
+const { emailValidationSchema } = require("./../utils/joiValidation");
+const { createSendToken } = require("../utils/createToken");
 
 module.exports.signup = catchAsync(async (req, res, next) => {
+  // modify the request body
+  const reqBody = {
+    ...req.body,
+    sessions: {
+      mobile:
+        req.headers["x-device-type"] === "mobile"
+          ? req.headers["x-device-id"]
+          : null,
+    },
+  };
+
+  // Joi validation start
+  const { error: requestBodyError } =
+    userPostValidationSchema.validate(reqBody);
+
+  if (requestBodyError) {
+    return next(new AppError(requestBodyError.details[0].message, 400));
+  }
+  // Joi validation end
   // check user is exist
-  const user_info = await User.findOne({ email: req?.body?.email });
+  const user_info = await User.findOne({ email: reqBody?.email });
   if (user_info) {
     return next(new AppError("Email is already exist.", 400));
   }
-  const newUser = await User.create(req.body);
+
+  const newUser = await User.create(reqBody);
   // const user = userResponse(newUser);
   const user = await userWithPresignedAvatarUrl(newUser, null);
   res.status(200).json({
@@ -47,9 +48,15 @@ module.exports.signup = catchAsync(async (req, res, next) => {
 });
 
 module.exports.signin = catchAsync(async (req, res, next) => {
-  // remove all avatars from databases
+  // Joi validation start
+  const { error: requestBodyError } = userPatchValidationSchema.validate(
+    req.body
+  );
 
-  // const result = await Avatar.deleteMany({});
+  if (requestBodyError) {
+    return next(new AppError(requestBodyError.details[0].message, 400));
+  }
+  // Joi validation end
 
   const { email, password } = req.body;
   //1)Check if email and password is Not exist
@@ -61,6 +68,46 @@ module.exports.signin = catchAsync(async (req, res, next) => {
   const user = await User.findOne({ email }).select("+password");
   if (!user || !(await user.correctPassword(password, user.password))) {
     return next(new AppError("Incorrect email or password", 401));
+  }
+  // If login device is mobile and new
+  if (
+    user.sessions.mobile &&
+    user.sessions.mobile !== req?.headers["x-device-id"] &&
+    req?.headers["x-device-type"] === "mobile"
+  ) {
+    try {
+      // create 6 digit otp
+      const otp = crypto.randomInt(100000, 999999).toString();
+      // The validity of the OTP is 5 minutes.
+      const otpExpiry = Date.now() + 3 * 60 * 1000;
+
+      user.otp = otp;
+      user.otpExpiry = otpExpiry;
+
+      // await user.save();
+      // Update user document using $set
+      await User.findByIdAndUpdate(
+        user._id,
+        { $set: { otp: otp, otpExpiry: otpExpiry } },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
+
+      await new Email(user, null, null).sendOtp();
+      return res.status(200).json({
+        status: "Success",
+        message: "OTP sent to email",
+      });
+    } catch (error) {
+      return next(
+        new AppError(
+          "There was an error sending the email. Try again later",
+          500
+        )
+      );
+    }
   }
   //3)if everythings ok, send token to client
   createSendToken(user, 200, res);
@@ -101,6 +148,21 @@ module.exports.protect = catchAsync(async (req, res, next) => {
       new AppError("User recently changed password Please log in again", 401)
     );
   }
+
+  // mobile device authentication code start
+
+  if (
+    freshUser.sessions.mobile &&
+    freshUser.sessions.mobile !== req?.headers["x-device-id"] &&
+    req?.headers["x-device-type"] === "mobile"
+  ) {
+    return res.status(401).json({
+      token: null,
+      message: "Please log in again to continue.",
+    });
+  }
+  // mobile device authentication code end
+
   req.user = freshUser;
   res.locals.user = freshUser;
   return next();
@@ -109,6 +171,13 @@ module.exports.protect = catchAsync(async (req, res, next) => {
 //forgotPassword function implementation
 
 module.exports.forgotPassword = catchAsync(async (req, res, next) => {
+  // Joi validation start
+  const { error: requestBodyError } = emailValidationSchema.validate(req.body);
+
+  if (requestBodyError) {
+    return next(new AppError(requestBodyError.details[0].message, 400));
+  }
+  // Joi validation end
   //1) Get user based on Posted Email
   const user = await User.findOne({ email: req.body.email });
 
@@ -128,7 +197,7 @@ module.exports.forgotPassword = catchAsync(async (req, res, next) => {
     const baseUrl = `${req.protocol}://${req.get("host")}`;
     await new Email(user, resetURL, baseUrl).sendPasswordReset();
     res.status(200).json({
-      status: "succes",
+      status: "Success",
       message: "Token sent to email",
       resetURL: resetURL,
     });
@@ -144,6 +213,15 @@ module.exports.forgotPassword = catchAsync(async (req, res, next) => {
 });
 
 module.exports.resetPassword = catchAsync(async (req, res, next) => {
+  // Joi validation start
+  const { error: requestBodyError } = userPatchValidationSchema.validate(
+    req.body
+  );
+
+  if (requestBodyError) {
+    return next(new AppError(requestBodyError.details[0].message, 400));
+  }
+  // Joi validation end
   //Get user based on the token
 
   const hashedToken = crypto

@@ -48,7 +48,7 @@ app.use(
 // Apply the rate limiter to all requests
 // app.use(limiter);
 
-app.use(express.json());
+app.use(express.json({ limit: "1kb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // data sanitization against NOSQL query injection

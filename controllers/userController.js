@@ -1,26 +1,39 @@
 const catchAsync = require("../utils/catchasync");
 const AppError = require("./../utils/apperror");
-const { User } = require("../models/user");
+const { User, userPatchValidationSchema } = require("../models/user");
 const { userWithPresignedAvatarUrl } = require("../utils/userResponse");
 const multer = require("multer");
 const sharp = require("sharp");
+const path = require("path");
+const { v4: uuidv4 } = require("uuid");
 const { Group } = require("../models/group");
 const { Fences } = require("../models/fences");
 const fs = require("fs");
-const path = require("path");
 const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { BUCKET_NAME, s3 } = require("./../utils/awsS3");
 const { Avatar } = require("./../models/avatar");
+const {
+  IdParamsValidationSchema,
+  geoFenceValidationSchema,
+} = require("./../utils/joiValidation");
 
 // Update user photo information code start
 
 const multerStorage = multer.memoryStorage();
 
+// old version code
+// const multerFilter = (req, file, cb) => {
+//   if (file.mimetype.startsWith("image")) {
+//     cb(null, true);
+//   } else {
+//     cb(new AppError("Not an image! Please upload only images.", 400), false);
+//   }
+// };
 const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith("image")) {
+  if (file.mimetype === "image/jpeg" || file.mimetype === "image/png") {
     cb(null, true);
   } else {
-    cb(new AppError("Not an image! Please upload only images.", 400), false);
+    cb(new AppError("Only JPEG and PNG images are allowed!", 400), false);
   }
 };
 
@@ -34,13 +47,19 @@ const uploadUserPhoto = upload.single("avatar");
 const resizeUserPhoto = catchAsync(async (req, res, next) => {
   if (!req.file) return next(); // No file uploaded, proceed to next middleware
 
-  const filename = `user-${req.user.id}-${Date.now()}.jpeg`;
+  // const filename = `user-${req.user.id}-${Date.now()}.jpeg`;
+
+  // Generate sanitized filename
+  const filename = `user-${uuidv4()}${path
+    .extname(req.file.originalname)
+    .toLowerCase()}`;
 
   // Resize and convert image to buffer
   const processedImage = await sharp(req.file.buffer)
-    .resize(500, 500)
+    .resize(600, 600)
     .toFormat("jpeg")
     .jpeg({ quality: 90 })
+    .withMetadata(false) // Strip metadata
     .toBuffer();
 
   // Check if user exists in the database
@@ -102,6 +121,20 @@ const filterObj = (obj, ...allowedFields) => {
 
 // Update user information controller function
 const updateUser = catchAsync(async (req, res, next) => {
+  // Joi validation start
+  const { error: paramsError } = IdParamsValidationSchema.validate(req.params);
+
+  if (paramsError) {
+    return next(new AppError(paramsError.details[0].message, 400));
+  }
+  const { error: requestBodyError } = userPatchValidationSchema.validate(
+    req.body
+  );
+
+  if (requestBodyError) {
+    return next(new AppError(requestBodyError.details[0].message, 400));
+  }
+  // Joi validation end
   // Check existing user
   const existing_user = await User.findById(req.params.id);
 
@@ -217,6 +250,13 @@ const updateUser = catchAsync(async (req, res, next) => {
 
 // Delete user information controller function
 const deleteUser = catchAsync(async (req, res, next) => {
+  // Joi validation
+  const { error } = IdParamsValidationSchema.validate(req.params);
+
+  if (error) {
+    return next(new AppError(error.details[0].message, 400));
+  }
+
   if (req.params.id !== req.user._id.toString()) {
     return next(
       new AppError("You do not have permission for this action", 403)
@@ -307,6 +347,13 @@ const getAllUsers = catchAsync(async (req, res, next) => {
 
 // Read single user information
 const getUser = catchAsync(async (req, res, next) => {
+  // Joi validation
+  const { error } = IdParamsValidationSchema.validate(req.params);
+
+  if (error) {
+    return next(new AppError(error.details[0].message, 400));
+  }
+
   const user = await User.findById(req.params.id);
 
   let avatar = "";
@@ -325,6 +372,20 @@ const getUser = catchAsync(async (req, res, next) => {
 
 // Add Geofence Entry
 const addGeofence = catchAsync(async (req, res, next) => {
+  // Joi validation code start
+  const { error: paramsError } = IdParamsValidationSchema.validate(req.params);
+
+  if (paramsError) {
+    return next(new AppError(paramsError.details[0].message, 400));
+  }
+  const { error: requestBodyError } = geoFenceValidationSchema.validate(
+    req.body
+  );
+
+  if (requestBodyError) {
+    return next(new AppError(requestBodyError.details[0].message, 400));
+  }
+  // Joi validation code end
   const { currentGeofenceId, groupId, geofenceName } = req.body;
 
   // Validate the geofenceName is provided
@@ -396,6 +457,12 @@ const addGeofence = catchAsync(async (req, res, next) => {
 
 // Remove Geofence Entry
 const removeGeofence = catchAsync(async (req, res, next) => {
+  // Joi validation
+  const { error } = IdParamsValidationSchema.validate(req.params);
+
+  if (error) {
+    return next(new AppError(error.details[0].message, 400));
+  }
   const { currentGeofenceId, groupId } = req.body;
 
   // Find the user

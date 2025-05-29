@@ -1,0 +1,17 @@
+extends baseEmail
+
+block content
+    p Hi #{firstName},
+    p We received a request to verify your identity. Please use the OTP (One-Time Password) below to proceed-
+    table.btn.btn-primary(role='presentation', border='0', cellpadding='0', cellspacing='0')
+        tbody
+            tr
+                td(align='left')
+                    table(role='presentation', border='0', cellpadding='0', cellspacing='0')
+                        tbody
+                            tr
+                                td(style='padding:0 10px;')
+                                    span(style='color: #fff;') #{otp}
+    p This OTP is valid for only 3 minutes. If you did not request this, please ignore this email or contact our support team.
+    p Thank you for choosing our services!
+
