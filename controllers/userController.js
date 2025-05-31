@@ -69,7 +69,7 @@ const resizeUserPhoto = catchAsync(async (req, res, next) => {
     return next(new AppError("No user found with that ID", 404));
   }
 
-  if (req.params.id !== req.user._id.toString()) {
+  if (req.params.id !== req.user._id.toString() && req.superuser === false) {
     return next(
       new AppError("You do not have permission for this action", 403)
     );
@@ -142,7 +142,7 @@ const updateUser = catchAsync(async (req, res, next) => {
     return next(new AppError("No user found with that Id", 404));
   }
 
-  if (req.params.id !== req.user._id.toString()) {
+  if (req.params.id !== req.user._id.toString() && req.superuser === false) {
     return next(
       new AppError("You do not have permission for this action", 403)
     );
@@ -221,7 +221,7 @@ const updateUser = catchAsync(async (req, res, next) => {
 
   // Update user document using $set
   const updatedUser = await User.findByIdAndUpdate(
-    req.user.id,
+    req.params.id,
     { $set: updateFields },
     {
       new: true,
@@ -257,7 +257,7 @@ const deleteUser = catchAsync(async (req, res, next) => {
     return next(new AppError(error.details[0].message, 400));
   }
 
-  if (req.params.id !== req.user._id.toString()) {
+  if (req.params.id !== req.user._id.toString() && req.superuser === false) {
     return next(
       new AppError("You do not have permission for this action", 403)
     );
@@ -270,7 +270,7 @@ const deleteUser = catchAsync(async (req, res, next) => {
     return next(new AppError("No user found with that Id", 404));
   }
 
-  const user = await User.findByIdAndDelete(req.user.id);
+  const user = await User.findByIdAndDelete(req.params.id);
   if (!user) {
     return next(new AppError("No user found with that Id", 404));
   }
