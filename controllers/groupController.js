@@ -47,18 +47,25 @@ module.exports.createGroup = catchasync(async function (req, res, next) {
 // read all groups information
 
 module.exports.getAllgroups = catchasync(async function (req, res, next) {
-  // req.user._id === members[id]
-
-  const data = await Group.find({});
   let newDataArr = [];
-  for (let i = 0; i < data.length; i++) {
-    for (let j = 0; j < data[i].members.length; j++) {
-      if (
-        req.user._id == JSON.stringify(data[i].members[j]._id).replace(/"/g, "")
-      ) {
-        newDataArr.push(data[i]);
+  let data = await Group.find({});
+  // check superuser
+  if (req.superuser) {
+    newDataArr = data;
+  } else {
+    // admin or users groups code start
+
+    for (let i = 0; i < data.length; i++) {
+      for (let j = 0; j < data[i].members.length; j++) {
+        if (
+          req.user._id ==
+          JSON.stringify(data[i].members[j]._id).replace(/"/g, "")
+        ) {
+          newDataArr.push(data[i]);
+        }
       }
     }
+    // admin or users groups code end
   }
 
   const document = newDataArr.map((item) => {
@@ -355,7 +362,7 @@ module.exports.deleteGroup = catchasync(async function (req, res, next) {
       JSON.stringify(req.user._id).replace(/"/g, "")
     );
   });
-  if (admin_user) {
+  if (admin_user || req.superuser === true) {
     const group = await Group.findByIdAndDelete(req.params.id);
     if (!group) {
       return next(new AppError("No Document found with that GroupId", 404));
@@ -767,12 +774,19 @@ module.exports.removeMembers = catchasync(async function (req, res, next) {
 // user leave functionality from a group
 
 module.exports.leaveMembers = catchasync(async function (req, res, next) {
-  // Joi validation
-  const { error } = IdParamsValidationSchema.validate(req.params);
+  // Joi validation code start
+  const { error: paramsError } = IdParamsValidationSchema.validate(req.params);
 
-  if (error) {
-    return next(new AppError(error.details[0].message, 400));
+  if (paramsError) {
+    return next(new AppError(paramsError.details[0].message, 400));
   }
+  const { error: requestBodyError } = GroupPatchValidationSchema(req.body);
+
+  if (requestBodyError) {
+    return next(new AppError(requestBodyError.details[0].message, 400));
+  }
+
+  // Joi validation code end
   const existing_group = await Group.findById(req.params.id);
 
   if (!existing_group) {
@@ -782,7 +796,9 @@ module.exports.leaveMembers = catchasync(async function (req, res, next) {
   const check_existing_user = existing_group.members.find((item) => {
     return (
       JSON.stringify(item._id).replace(/"/g, "") ==
-      JSON.stringify(req.user._id).replace(/"/g, "")
+        JSON.stringify(req.user._id).replace(/"/g, "") ||
+      (JSON.stringify(item._id).replace(/"/g, "") === req.body.userId &&
+        req.superuser === true)
     );
   });
 
@@ -793,7 +809,9 @@ module.exports.leaveMembers = catchasync(async function (req, res, next) {
   const check_existing_admin = existing_group.groupAdmin.find((item) => {
     return (
       JSON.stringify(item._id).replace(/"/g, "") ==
-      JSON.stringify(req.user._id).replace(/"/g, "")
+        JSON.stringify(req.user._id).replace(/"/g, "") ||
+      (JSON.stringify(item._id).replace(/"/g, "") === req.body.userId &&
+        req.superuser === true)
     );
   });
 
@@ -802,7 +820,9 @@ module.exports.leaveMembers = catchasync(async function (req, res, next) {
     const arrAdmin = existing_group.groupAdmin.filter((item) => {
       if (
         JSON.stringify(item._id).replace(/"/g, "") !==
-        JSON.stringify(req.user._id).replace(/"/g, "")
+          JSON.stringify(req.user._id).replace(/"/g, "") ||
+        (JSON.stringify(item._id).replace(/"/g, "") !== req.body.userId &&
+          req.superuser === true)
       ) {
         let stringWithoutQuotes = JSON.stringify(item._id).replace(/"/g, "");
         return stringWithoutQuotes;
@@ -817,7 +837,9 @@ module.exports.leaveMembers = catchasync(async function (req, res, next) {
     const arrMembers = existing_group.members.filter((item) => {
       if (
         JSON.stringify(item._id).replace(/"/g, "") !==
-        JSON.stringify(req.user._id).replace(/"/g, "")
+          JSON.stringify(req.user._id).replace(/"/g, "") ||
+        (JSON.stringify(item._id).replace(/"/g, "") === req.body.userId &&
+          req.superuser === true)
       ) {
         let stringWithoutQuotes = JSON.stringify(item._id).replace(/"/g, "");
         return stringWithoutQuotes;
@@ -865,7 +887,9 @@ module.exports.leaveMembers = catchasync(async function (req, res, next) {
     const arr = existing_group.members.filter((item) => {
       if (
         JSON.stringify(item._id).replace(/"/g, "") !==
-        JSON.stringify(req.user._id).replace(/"/g, "")
+          JSON.stringify(req.user._id).replace(/"/g, "") ||
+        (JSON.stringify(item._id).replace(/"/g, "") !== req.body.userId &&
+          req.superuser === true)
       ) {
         let stringWithoutQuotes = JSON.stringify(item._id).replace(/"/g, "");
         return stringWithoutQuotes;
@@ -940,7 +964,7 @@ module.exports.updateGroup = catchasync(async (req, res, next) => {
       JSON.stringify(req.user._id).replace(/"/g, "")
     );
   });
-  if (admin_user) {
+  if (admin_user || req.superuser === true) {
     if (!req?.body?.name) {
       return next(new AppError("The name field is required", 400));
     }
