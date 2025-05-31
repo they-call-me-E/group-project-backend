@@ -1,5 +1,6 @@
 const express = require("express");
 const { verifyEmail } = require("./../middleware/verifyEmail");
+const { isSuperUserOnly } = require("../middleware/isSuperUserOnly");
 
 const {
   signup,
@@ -35,14 +36,15 @@ router.post("/verify-email", verifyEmail); // all validation done
 
 //Protect All routes after this middleware
 router.use(protect);
+router.use(isSuperUserOnly);
 
 // Geofence routes
 
-router.patch("/:id/geodata", addGeofence); // all validation done
-router.delete("/:id/geodata", removeGeofence); // all validation done
+router.patch("/:id/geodata", addGeofence); // superuser with all validation done
+router.delete("/:id/geodata", removeGeofence); // superuser with all validation done
 
-router.patch("/:id", uploadUserPhoto, resizeUserPhoto, updateUser); //  all validation done
-router.delete("/:id", deleteUser); // all validation done
+router.patch("/:id", uploadUserPhoto, resizeUserPhoto, updateUser); // superuser with all validation done
+router.delete("/:id", deleteUser); // superuser with all validation done
 router.get("/", getAllUsers);
 router.get("/:id", getUser); // all validation done
 
