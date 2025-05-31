@@ -21,7 +21,7 @@ function isEmptyObjectCheck(obj) {
 }
 //create a fences
 module.exports.createFences = catchasync(async function (req, res, next) {
-  // Joi validation start
+  // Joi validation code start
   const { error: paramsError } = IdParamsValidationSchema.validate(req.params);
 
   if (paramsError) {
@@ -34,7 +34,7 @@ module.exports.createFences = catchasync(async function (req, res, next) {
   if (requestBodyError) {
     return next(new AppError(requestBodyError.details[0].message, 400));
   }
-  // Joi validation end
+  // Joi validation code end
 
   const existing_group = await Group.findById(req.params.id);
   if (!existing_group) {
@@ -48,7 +48,7 @@ module.exports.createFences = catchasync(async function (req, res, next) {
     );
   });
 
-  if (admin_user) {
+  if (admin_user || req.superuser === true) {
     // create a fences
     const body = {
       ...req.body,
@@ -137,22 +137,6 @@ module.exports.getGroupFences = catchasync(async function (req, res, next) {
     };
   });
 
-  // i do not want to send response if user is not exist in the group
-
-  // groupMembersArr.find((item) => {
-  //   if (
-  //     JSON.stringify(item._id).replace(/"/g, "") ==
-  //     JSON.stringify(req.user._id).replace(/"/g, "")
-  //   ) {
-
-  //     res.status(200).json({
-  //       document: filterArr,
-  //     });
-  //   } else {
-  //     return next(new AppError("Access Denied", 403));
-  //   }
-  // });
-
   const singleItem = groupMembersArr.find((item) => {
     if (
       JSON.stringify(item._id).replace(/"/g, "") ==
@@ -161,7 +145,7 @@ module.exports.getGroupFences = catchasync(async function (req, res, next) {
       return true;
     }
   });
-  if (singleItem) {
+  if (singleItem || req.superuser) {
     res.status(200).json({
       document: filterArr,
     });
@@ -177,7 +161,7 @@ module.exports.getSingleGroupFences = catchasync(async function (
   res,
   next
 ) {
-  // Joi validation
+  // Joi validation code start
   const { error } = GroupIdWithFenceIdParamsValidationSchema.validate(
     req.params
   );
@@ -185,6 +169,8 @@ module.exports.getSingleGroupFences = catchasync(async function (
   if (error) {
     return next(new AppError(error.details[0].message, 400));
   }
+  // Joi validation code end
+
   let filterFencesData = {};
   let groupMembersArr = [];
   const allFencesData = await Fences.find({});
@@ -241,21 +227,6 @@ module.exports.getSingleGroupFences = catchasync(async function (
     }),
   };
 
-  // i do not want to send response if user is not exist in the group
-
-  // groupMembersArr.find((item) => {
-  //   if (
-  //     JSON.stringify(item._id).replace(/"/g, "") ==
-  //     JSON.stringify(req.user._id).replace(/"/g, "")
-  //   ) {
-  //     res.status(200).json({
-  //       document,
-  //     });
-  //   } else {
-  //     return next(new AppError("Access Denied", 403));
-  //   }
-  // });
-
   const singleItem = groupMembersArr.find((item) => {
     if (
       JSON.stringify(item._id).replace(/"/g, "") ==
@@ -264,7 +235,7 @@ module.exports.getSingleGroupFences = catchasync(async function (
       return true;
     }
   });
-  if (singleItem) {
+  if (singleItem || req.superuser) {
     res.status(200).json({
       document,
     });
@@ -316,7 +287,7 @@ module.exports.updateFences = catchasync(async (req, res, next) => {
     );
   });
 
-  if (admin_user) {
+  if (admin_user || req.superuser === true) {
     const body = {
       ...req.body,
     };
@@ -382,7 +353,7 @@ module.exports.deleteFences = catchasync(async (req, res, next) => {
     );
   });
 
-  if (admin_user) {
+  if (admin_user || req.superuser === true) {
     const fences = await Fences.findByIdAndDelete(req.params.fenceId);
 
     res.status(204).json({
