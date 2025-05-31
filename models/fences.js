@@ -83,16 +83,14 @@ module.exports.fencesPostValidationSchema = Joi.object({
 
   groups: Joi.array()
     .items(
-      Joi.string().required().messages({
+      Joi.string().optional().messages({
         "string.base": "Group ID must be a string.",
         "string.empty": "Group ID cannot be empty.",
-        "any.required": "Group ID is required.",
       })
     )
-    .required()
+    .optional()
     .messages({
       "array.base": "Groups must be an array.",
-      "any.required": "Groups are required.",
     }),
 })
   .required()
