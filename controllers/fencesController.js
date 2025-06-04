@@ -27,6 +27,10 @@ module.exports.createFences = catchasync(async function (req, res, next) {
   if (paramsError) {
     return next(new AppError(paramsError.details[0].message, 400));
   }
+  if (req?.body?.address) {
+    delete req?.body?.address;
+  }
+
   const { error: requestBodyError } = fencesPostValidationSchema.validate(
     req.body
   );
@@ -255,6 +259,12 @@ module.exports.updateFences = catchasync(async (req, res, next) => {
   if (error) {
     return next(new AppError(error.details[0].message, 400));
   }
+
+  // filterRequestBody
+  if (req?.body?.address) {
+    delete req?.body?.address;
+  }
+
   const { error: requestBodyError } = fencesPatchValidationSchema.validate(
     req.body
   );
