@@ -82,7 +82,37 @@ const io = new Server(server, {
   },
 });
 
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
+  const connectedUserId = socket.handshake.query.userId;
+
+  if (connectedUserId) {
+    try {
+      const updatedUser = await User.findByIdAndUpdate(
+        connectedUserId,
+        { $set: { "status.device.wifi": true } },
+        { new: true, runValidators: true }
+      );
+
+      // Inside Group Socket Event Broadcast
+      const userGroups = await Group.find({
+        members: { $in: [updatedUser._id] },
+      });
+
+      const avatarInfo = await Avatar.findOne({ ownerID: updatedUser._id });
+      const userInfo = await userWithPresignedAvatarUrl(
+        updatedUser,
+        avatarInfo?.avatar
+      );
+
+      userGroups.forEach((group) => {
+        io.to(group._id).emit("userConnected", {
+          userInfo,
+        });
+      });
+    } catch (error) {
+      console.error("Error updating user status on socket connection:", error);
+    }
+  }
   // Fetch groups for the connected user
   socket.on("joinUserGroups", async (userId) => {
     const userGroups = await Group.find({ members: { $in: [userId] } });
@@ -98,39 +128,33 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", async () => {
-    console.log(`User disconnected: ${socket.id}`);
+    // console.log(`User disconnected: ${socket.id}`);
     const disconnectedUserId = socket.handshake.query.userId;
 
     if (disconnectedUserId) {
       try {
-        const disconnectedUserId = socket.handshake.query.userId;
-        if (disconnectedUserId) {
-          const updatedUser = await User.findByIdAndUpdate(
-            disconnectedUserId,
-            { $set: { "status.device.wifi": false } },
-            { new: true, runValidators: true }
-          );
-          console.log(
-            `User ${disconnectedUserId} disconnected. Wi-Fi status set to off.`
-          );
+        const updatedUser = await User.findByIdAndUpdate(
+          disconnectedUserId,
+          { $set: { "status.device.wifi": false } },
+          { new: true, runValidators: true }
+        );
 
-          // Group-এর মধ্যে Socket Event Broadcast করুন
-          const userGroups = await Group.find({
-            members: { $in: [updatedUser._id] },
+        // Inside Group Socket Event Broadcast
+        const userGroups = await Group.find({
+          members: { $in: [updatedUser._id] },
+        });
+
+        const avatarInfo = await Avatar.findOne({ ownerID: updatedUser._id });
+        const userInfo = await userWithPresignedAvatarUrl(
+          updatedUser,
+          avatarInfo?.avatar
+        );
+
+        userGroups.forEach((group) => {
+          io.to(group._id).emit("userDisconnected", {
+            userInfo,
           });
-
-          const avatarInfo = await Avatar.findOne({ ownerID: updatedUser._id });
-          const userInfo = await userWithPresignedAvatarUrl(
-            updatedUser,
-            avatarInfo?.avatar
-          );
-
-          userGroups.forEach((group) => {
-            io.to(group._id).emit("userDisconnected", {
-              userInfo,
-            });
-          });
-        }
+        });
       } catch (error) {
         console.error("Error updating user status on disconnect:", error);
       }
